@@ -29,12 +29,16 @@ const SUGGESTED_PROMPTS = [
 
 export default function CoachPage() {
   const { modules, sessions, marks } = useAppStore();
-  const [messages, setMessages] = useState<ChatMessage[]>(() => chatDb.getAll());
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const [error, setError] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const aiReady = hasApiKey();
+
+  useEffect(() => {
+    chatDb.getAll().then(setMessages);
+  }, []);
 
   // Auto-scroll to bottom
   useEffect(() => {
@@ -44,8 +48,8 @@ export default function CoachPage() {
   // Build AI chat history from messages
   const buildChatHistory = useCallback((): ChatHistoryItem[] => {
     return messages.map(msg => ({
-      role: msg.role === 'user' ? 'user' : 'model',
-      parts: [{ text: msg.content }],
+      role: msg.role === 'user' ? 'user' : 'assistant',
+      content: msg.content,
     }));
   }, [messages]);
 
@@ -58,7 +62,7 @@ export default function CoachPage() {
     setError('');
 
     // Add user message
-    const userMsg = chatDb.add('user', content);
+    const userMsg = await chatDb.add('user', content);
     setMessages(prev => [...prev, userMsg]);
     setInput('');
     setIsTyping(true);
@@ -70,7 +74,7 @@ export default function CoachPage() {
         { modules, sessions, marks }
       );
 
-      const aiMsg = chatDb.add('assistant', response);
+      const aiMsg = await chatDb.add('assistant', response);
       setMessages(prev => [...prev, aiMsg]);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Something went wrong. Please try again.');
@@ -86,8 +90,8 @@ export default function CoachPage() {
     }
   }
 
-  function handleClearChat() {
-    chatDb.clear();
+  async function handleClearChat() {
+    await chatDb.clear();
     setMessages([]);
     setError('');
   }

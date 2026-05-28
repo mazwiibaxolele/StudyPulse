@@ -1,9 +1,5 @@
-/**
- * App Store — General application state management
- */
-
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
+import { supabase } from '../lib/supabase';
 import type { Module, Mark, StudySession, UserPreferences } from '../types';
 import { DEFAULT_PREFERENCES } from '../types';
 import {
@@ -11,11 +7,7 @@ import {
   marksDb,
   sessionsDb,
   preferencesDb,
-  authDb,
-  type MockUser,
 } from '../lib/db';
-
-// ─── Types ───────────────────────────────────────────────────
 
 interface AppStore {
   // State
@@ -23,157 +15,120 @@ interface AppStore {
   marks: Mark[];
   sessions: StudySession[];
   preferences: UserPreferences;
-  user: MockUser | null;
+  user: any | null; // Supabase user
   isAuthenticated: boolean;
   isLoaded: boolean;
 
   // Data loading
-  loadAll: () => void;
+  loadAll: () => Promise<void>;
 
   // Modules
-  addModule: (data: Omit<Module, 'id' | 'createdAt' | 'isActive'>) => Module;
-  updateModule: (id: string, data: Partial<Module>) => void;
-  archiveModule: (id: string) => void;
+  addModule: (data: Omit<Module, 'id' | 'createdAt' | 'isActive'>) => Promise<Module>;
+  updateModule: (id: string, data: Partial<Module>) => Promise<void>;
+  archiveModule: (id: string) => Promise<void>;
 
   // Marks
-  addMark: (data: Omit<Mark, 'id' | 'percentage' | 'createdAt'>) => Mark;
-  updateMark: (id: string, data: Partial<Mark>) => void;
-  deleteMark: (id: string) => void;
+  addMark: (data: Omit<Mark, 'id' | 'percentage' | 'createdAt'>) => Promise<Mark>;
+  deleteMark: (id: string) => Promise<void>;
 
   // Sessions
-  refreshSessions: () => void;
+  refreshSessions: () => Promise<void>;
 
   // Auth
-  signIn: (email: string, password: string) => MockUser;
-  signUp: (email: string, password: string, name: string) => MockUser;
-  signOut: () => void;
+  setUser: (user: any | null) => void;
+  signOut: () => Promise<void>;
 
   // Preferences
-  updatePreferences: (data: Partial<UserPreferences>) => void;
+  updatePreferences: (data: Partial<UserPreferences>) => Promise<void>;
 }
 
-// ─── Store ───────────────────────────────────────────────────
+export const useAppStore = create<AppStore>()((set) => ({
+  modules: [],
+  marks: [],
+  sessions: [],
+  preferences: DEFAULT_PREFERENCES,
+  user: null,
+  isAuthenticated: false,
+  isLoaded: false,
 
-export const useAppStore = create<AppStore>()(
-  persist(
-    (set) => ({
-      // Initial state
+  setUser: (user) => set({ user, isAuthenticated: !!user }),
+
+  loadAll: async () => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const user = session?.user ?? null;
+      set({ user, isAuthenticated: !!user });
+
+      if (user) {
+        const [modules, marks, sessions, preferences] = await Promise.all([
+          modulesDb.getAll(),
+          marksDb.getAll(),
+          sessionsDb.getAll(),
+          preferencesDb.get(),
+        ]);
+        set({ modules, marks, sessions, preferences, isLoaded: true });
+      } else {
+        set({ isLoaded: true });
+      }
+    } catch (e) {
+      console.error('Failed to load data:', e);
+      set({ isLoaded: true });
+    }
+  },
+
+  addModule: async (data) => {
+    const newModule = await modulesDb.create(data);
+    set((state) => ({ modules: [...state.modules, newModule] }));
+    return newModule;
+  },
+
+  updateModule: async (id, data) => {
+    // Optimistic
+    set((state) => ({
+      modules: state.modules.map((m) => (m.id === id ? { ...m, ...data } : m)),
+    }));
+    await modulesDb.update(id, data);
+  },
+
+  archiveModule: async (id) => {
+    set((state) => ({
+      modules: state.modules.filter((m) => m.id !== id),
+    }));
+    await modulesDb.archive(id);
+  },
+
+  addMark: async (data) => {
+    const newMark = await marksDb.create(data);
+    set((state) => ({ marks: [...state.marks, newMark] }));
+    return newMark;
+  },
+
+  deleteMark: async (id) => {
+    set((state) => ({
+      marks: state.marks.filter((m) => m.id !== id),
+    }));
+    await marksDb.delete(id);
+  },
+
+  refreshSessions: async () => {
+    const sessions = await sessionsDb.getAll();
+    set({ sessions });
+  },
+
+  signOut: async () => {
+    await supabase.auth.signOut();
+    set({
+      user: null,
+      isAuthenticated: false,
       modules: [],
       marks: [],
       sessions: [],
       preferences: DEFAULT_PREFERENCES,
-      user: null,
-      isAuthenticated: false,
-      isLoaded: false,
+    });
+  },
 
-      loadAll: () => {
-        const modules = modulesDb.getAll();
-        const marks = marksDb.getAll();
-        const sessions = sessionsDb.getAll();
-        const preferences = preferencesDb.get();
-        const user = authDb.getCurrentUser();
-
-        set({
-          modules,
-          marks,
-          sessions,
-          preferences,
-          user,
-          isAuthenticated: user !== null,
-          isLoaded: true,
-        });
-      },
-
-      // ─── Modules ─────────────────────────────────────────
-
-      addModule: (data) => {
-        const newModule = modulesDb.create(data);
-        set((state) => ({ modules: [...state.modules, newModule] }));
-        return newModule;
-      },
-
-      updateModule: (id, data) => {
-        modulesDb.update(id, data);
-        set((state) => ({
-          modules: state.modules.map((m) =>
-            m.id === id ? { ...m, ...data } : m
-          ),
-        }));
-      },
-
-      archiveModule: (id) => {
-        modulesDb.archive(id);
-        set((state) => ({
-          modules: state.modules.filter((m) => m.id !== id),
-        }));
-      },
-
-      // ─── Marks ───────────────────────────────────────────
-
-      addMark: (data) => {
-        const newMark = marksDb.create(data);
-        set((state) => ({ marks: [...state.marks, newMark] }));
-        return newMark;
-      },
-
-      updateMark: (id, data) => {
-        marksDb.update(id, data);
-        set((state) => ({
-          marks: state.marks.map((m) => {
-            if (m.id !== id) return m;
-            const updated = { ...m, ...data };
-            if (data.score !== undefined || data.total !== undefined) {
-              updated.percentage = (updated.score / updated.total) * 100;
-            }
-            return updated;
-          }),
-        }));
-      },
-
-      deleteMark: (id) => {
-        marksDb.delete(id);
-        set((state) => ({
-          marks: state.marks.filter((m) => m.id !== id),
-        }));
-      },
-
-      // ─── Sessions ────────────────────────────────────────
-
-      refreshSessions: () => {
-        set({ sessions: sessionsDb.getAll() });
-      },
-
-      // ─── Auth ────────────────────────────────────────────
-
-      signIn: (email, password) => {
-        const user = authDb.signIn(email, password);
-        set({ user, isAuthenticated: true });
-        return user;
-      },
-
-      signUp: (email, password, name) => {
-        const user = authDb.signUp(email, password, name);
-        set({ user, isAuthenticated: true });
-        return user;
-      },
-
-      signOut: () => {
-        authDb.signOut();
-        set({ user: null, isAuthenticated: false });
-      },
-
-      // ─── Preferences ────────────────────────────────────
-
-      updatePreferences: (data) => {
-        const updated = preferencesDb.update(data);
-        set({ preferences: updated });
-      },
-    }),
-    {
-      name: 'studypulse-app',
-      partialize: (state) => ({
-        isAuthenticated: state.isAuthenticated,
-      }),
-    }
-  )
-);
+  updatePreferences: async (data) => {
+    set((state) => ({ preferences: { ...state.preferences, ...data } }));
+    await preferencesDb.update(data);
+  },
+}));

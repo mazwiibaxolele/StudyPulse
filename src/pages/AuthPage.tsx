@@ -1,13 +1,11 @@
 import { useState, type FormEvent } from 'react';
 import { Activity, AlertCircle } from 'lucide-react';
-import { useAppStore } from '../stores/appStore';
+import { supabase } from '../lib/supabase';
 import './AuthPage.css';
 
 type AuthMode = 'signin' | 'signup';
 
 export default function AuthPage() {
-  const { signIn, signUp } = useAppStore();
-
   const [mode, setMode] = useState<AuthMode>('signin');
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -35,7 +33,7 @@ export default function AuthPage() {
 
   // ─── Submit ─────────────────────────────────────────────
 
-  function handleSubmit(e: FormEvent) {
+  async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     setError('');
 
@@ -49,9 +47,23 @@ export default function AuthPage() {
 
     try {
       if (mode === 'signin') {
-        signIn(email.trim(), password);
+        const { error: signInError } = await supabase.auth.signInWithPassword({
+          email: email.trim(),
+          password,
+        });
+        if (signInError) throw signInError;
       } else {
-        signUp(email.trim(), password, name.trim());
+        const { error: signUpError } = await supabase.auth.signUp({
+          email: email.trim(),
+          password,
+          options: {
+            data: {
+              name: name.trim(),
+            },
+          },
+        });
+        if (signUpError) throw signUpError;
+        else setError('Account created! You can now sign in (check email for confirmation if required).');
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Something went wrong.');

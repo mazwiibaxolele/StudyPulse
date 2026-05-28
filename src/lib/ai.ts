@@ -103,7 +103,7 @@ export interface ChatHistoryItem {
 
 export async function sendToAI(
   userMessage: string,
-  chatHistory: { role: 'user' | 'model'; parts: { text: string }[] }[],
+  chatHistory: ChatHistoryItem[],
   context: StudyContext,
 ): Promise<string> {
   const apiKey = getApiKey();
@@ -113,15 +113,9 @@ export async function sendToAI(
 
   const systemPrompt = buildSystemPrompt(context);
 
-  // Convert Gemini format chat history to OpenAI format for Groq
-  const formattedHistory: ChatHistoryItem[] = chatHistory.map(msg => ({
-    role: msg.role === 'model' ? 'assistant' : 'user',
-    content: msg.parts[0].text
-  }));
-
   const messages = [
     { role: 'system', content: systemPrompt },
-    ...formattedHistory,
+    ...chatHistory,
     { role: 'user', content: userMessage }
   ];
 

@@ -6,7 +6,8 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { TimerPhase, StudyMethod } from '../types';
 import { DEFAULT_PREFERENCES } from '../types';
-import { sessionsDb, preferencesDb } from '../lib/db';
+import { sessionsDb } from '../lib/db';
+import { useAppStore } from './appStore';
 
 // ─── Types ───────────────────────────────────────────────────
 
@@ -38,7 +39,7 @@ interface TimerStore {
 // ─── Helpers ─────────────────────────────────────────────────
 
 function getPhaseDuration(phase: TimerPhase): number {
-  const prefs = preferencesDb.get();
+  const prefs = useAppStore.getState().preferences;
   switch (phase) {
     case 'focus':
       return (prefs.focusDuration ?? DEFAULT_PREFERENCES.focusDuration) * 60;
@@ -52,8 +53,8 @@ function getPhaseDuration(phase: TimerPhase): number {
 }
 
 function getMaxPomodoros(): number {
-  const prefs = preferencesDb.get();
-  return prefs.pomodorosBeforeLongBreak ?? DEFAULT_PREFERENCES.pomodorosBeforeLongBreak;
+  const prefs = useAppStore.getState().preferences;
+  return prefs.pomodorosBeforeLongBreak;
 }
 
 // ─── Store ───────────────────────────────────────────────────
@@ -112,7 +113,7 @@ export const useTimerStore = create<TimerStore>()(
 
         // Timer hit zero — transition phases
         const maxPomodoros = getMaxPomodoros();
-        const prefs = preferencesDb.get();
+        const prefs = useAppStore.getState().preferences;
 
         if (state.phase === 'focus') {
           const newPomodoroCount = state.pomodoroCount + 1;
@@ -164,7 +165,7 @@ export const useTimerStore = create<TimerStore>()(
 
       skipPhase: () => {
         const state = get();
-        const prefs = preferencesDb.get();
+        const prefs = useAppStore.getState().preferences;
 
         if (state.phase === 'focus') {
           const newPomodoroCount = state.pomodoroCount + 1;
@@ -227,7 +228,7 @@ export const useTimerStore = create<TimerStore>()(
         });
       },
 
-      completeSession: (focusRating: number, notes: string) => {
+      completeSession: async (focusRating: number, notes: string) => {
         const state = get();
         if (!state.activeModuleId || !state.activeMethod || !state.sessionStartedAt) return;
 
@@ -235,17 +236,22 @@ export const useTimerStore = create<TimerStore>()(
         const startTime = new Date(state.sessionStartedAt).getTime();
         const durationMins = Math.round((Date.now() - startTime) / 60000);
 
-        sessionsDb.create({
-          moduleId: state.activeModuleId,
-          studyMethod: state.activeMethod,
-          startedAt: state.sessionStartedAt,
-          endedAt: now,
-          durationMins,
-          pomodorosDone: state.totalPomodoros,
-          breaksTaken: state.breaksTaken,
-          focusRating,
-          notes,
-        });
+        try {
+          await sessionsDb.create({
+            moduleId: state.activeModuleId,
+            studyMethod: state.activeMethod,
+            startedAt: state.sessionStartedAt,
+            endedAt: now,
+            durationMins,
+            pomodorosDone: state.totalPomodoros,
+            breaksTaken: state.breaksTaken,
+            focusRating,
+            notes,
+          });
+          useAppStore.getState().refreshSessions();
+        } catch (e) {
+          console.error("Failed to log session:", e);
+        }
 
         // Reset everything
         set({
