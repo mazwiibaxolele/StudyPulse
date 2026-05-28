@@ -23,9 +23,13 @@ export const modulesDb = {
   },
 
   async create(data: Omit<Module, 'id' | 'createdAt' | 'isActive'>): Promise<Module> {
+    const { data: userData } = await supabase.auth.getUser();
+    if (!userData.user) throw new Error("Not logged in");
+
     const { data: m, error } = await supabase
       .from('modules')
       .insert({
+        user_id: userData.user.id,
         name: data.name,
         code: data.code,
         color: data.color,
@@ -90,9 +94,13 @@ export const sessionsDb = {
   },
 
   async create(data: Omit<StudySession, 'id' | 'createdAt'>): Promise<StudySession> {
+    const { data: userData } = await supabase.auth.getUser();
+    if (!userData.user) throw new Error("Not logged in");
+
     const { data: s, error } = await supabase
       .from('study_sessions')
       .insert({
+        user_id: userData.user.id,
         module_id: data.moduleId,
         study_method: data.studyMethod,
         started_at: data.startedAt,
@@ -144,10 +152,14 @@ export const marksDb = {
   },
 
   async create(data: Omit<Mark, 'id' | 'percentage' | 'createdAt'>): Promise<Mark> {
+    const { data: userData } = await supabase.auth.getUser();
+    if (!userData.user) throw new Error("Not logged in");
+
     const percentage = (data.score / data.total) * 100;
     const { data: m, error } = await supabase
       .from('marks')
       .insert({
+        user_id: userData.user.id,
         module_id: data.moduleId,
         title: data.title,
         type: data.type,
@@ -228,9 +240,12 @@ export const chatDb = {
   },
 
   async add(role: 'user' | 'assistant', content: string): Promise<ChatMessage> {
+    const { data: userData } = await supabase.auth.getUser();
+    if (!userData.user) throw new Error("Not logged in");
+
     const { data: m, error } = await supabase
       .from('chat_messages')
-      .insert({ role, content })
+      .insert({ user_id: userData.user.id, role, content })
       .select()
       .single();
     if (error) throw error;
