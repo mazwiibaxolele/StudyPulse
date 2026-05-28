@@ -1,6 +1,15 @@
 -- Enable UUID extension
 create extension if not exists "uuid-ossp";
 
+-- Clean up existing tables to ensure a fresh start
+drop trigger if exists on_auth_user_created on auth.users;
+drop function if exists public.handle_new_user();
+drop table if exists public.chat_messages cascade;
+drop table if exists public.user_preferences cascade;
+drop table if exists public.marks cascade;
+drop table if exists public.study_sessions cascade;
+drop table if exists public.modules cascade;
+
 -- ─── MODULES ──────────────────────────────────────────────────
 create table public.modules (
   id uuid primary key default uuid_generate_v4(),
