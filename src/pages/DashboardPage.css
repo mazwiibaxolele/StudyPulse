@@ -1,0 +1,173 @@
+/* ================================================================
+   DashboardPage — Analytics Styles
+   ================================================================ */
+
+/* ─── Stat Cards Grid ───────────────────────────────────────── */
+
+.dashboard-stats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--space-4);
+  margin-bottom: var(--space-8);
+}
+
+.stat-card__unit {
+  font-size: var(--text-xl);
+  font-weight: 500;
+  color: var(--text-muted);
+  margin-left: 2px;
+}
+
+/* ─── Charts Grid ───────────────────────────────────────────── */
+
+.dashboard-charts {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--space-6);
+}
+
+/* ─── Chart Card ────────────────────────────────────────────── */
+
+.chart-card {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-xl);
+  padding: var(--space-6);
+  transition: border-color var(--transition-base);
+}
+
+.chart-card:hover {
+  border-color: var(--border-hover);
+}
+
+.chart-card--wide {
+  grid-column: 1 / -1;
+}
+
+.chart-card__title {
+  font-size: var(--text-lg);
+  font-weight: 600;
+  margin-bottom: var(--space-2);
+}
+
+.chart-card__subtitle {
+  font-size: var(--text-sm);
+  color: var(--text-muted);
+  margin-bottom: var(--space-4);
+}
+
+.chart-card__body {
+  margin-top: var(--space-4);
+}
+
+/* ─── Chart Tooltip ─────────────────────────────────────────── */
+
+.chart-tooltip {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  padding: var(--space-3) var(--space-4);
+  box-shadow: var(--shadow-lg);
+  font-size: var(--text-sm);
+}
+
+.chart-tooltip__label {
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: var(--space-1);
+}
+
+.chart-tooltip__row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--text-secondary);
+}
+
+.chart-tooltip__row strong {
+  color: var(--text-primary);
+}
+
+.chart-tooltip__dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+/* ─── Heatmap ───────────────────────────────────────────────── */
+
+.heatmap-container {
+  margin-top: var(--space-4);
+  overflow-x: auto;
+  padding-bottom: var(--space-2);
+}
+
+.heatmap {
+  display: grid;
+  grid-template-columns: 48px repeat(24, 1fr);
+  gap: 3px;
+  min-width: 500px;
+}
+
+.heatmap__corner {
+  /* Empty top-left corner */
+}
+
+.heatmap__hour-label {
+  font-size: 10px;
+  color: var(--text-muted);
+  text-align: center;
+  padding-bottom: var(--space-1);
+}
+
+.heatmap__day-label {
+  font-size: var(--text-xs);
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  font-weight: 500;
+}
+
+.heatmap__cell {
+  aspect-ratio: 1;
+  border-radius: 3px;
+  min-height: 16px;
+  transition: all var(--transition-fast);
+  cursor: default;
+}
+
+.heatmap__cell:hover {
+  transform: scale(1.2);
+  z-index: 1;
+  box-shadow: var(--shadow-md);
+}
+
+/* ─── Responsive ────────────────────────────────────────────── */
+
+@media (max-width: 1024px) {
+  .dashboard-stats {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .dashboard-charts {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 768px) {
+  .dashboard-stats {
+    grid-template-columns: repeat(2, 1fr);
+    gap: var(--space-3);
+  }
+
+  .stat-card__value {
+    font-size: var(--text-2xl);
+  }
+}
+
+@media (max-width: 480px) {
+  .dashboard-stats {
+    grid-template-columns: 1fr 1fr;
+  }
+}

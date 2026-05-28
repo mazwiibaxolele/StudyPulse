@@ -1,0 +1,376 @@
+/* ================================================================
+   MarksPage — marks list, module filter, add modal, grade scale
+   ================================================================ */
+
+/* ─── Overall Average ───────────────────────────────────────── */
+.marks-overall {
+  display: flex;
+  align-items: center;
+  gap: var(--space-6);
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-xl);
+  padding: var(--space-6);
+  margin-bottom: var(--space-6);
+}
+
+.marks-overall__value {
+  font-family: var(--font-mono);
+  font-size: var(--text-5xl);
+  font-weight: 700;
+  line-height: 1;
+}
+
+.marks-overall__meta {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.marks-overall__label {
+  font-size: var(--text-sm);
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+.marks-overall__badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--radius-full);
+}
+
+/* ─── Filter Tabs ───────────────────────────────────────────── */
+.marks-filter {
+  display: flex;
+  gap: var(--space-2);
+  overflow-x: auto;
+  padding-bottom: var(--space-2);
+  margin-bottom: var(--space-6);
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.marks-filter::-webkit-scrollbar {
+  display: none;
+}
+
+.marks-filter__tab {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-4);
+  font-size: var(--text-sm);
+  font-weight: 500;
+  color: var(--text-muted);
+  background: var(--bg-surface);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-full);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all var(--transition-fast);
+}
+
+.marks-filter__tab:hover {
+  color: var(--text-secondary);
+  border-color: var(--border-hover);
+}
+
+.marks-filter__tab--active {
+  color: var(--text-primary);
+  background: var(--bg-hover);
+  border-color: var(--color-primary);
+}
+
+.marks-filter__dot {
+  width: 8px;
+  height: 8px;
+  border-radius: var(--radius-full);
+  flex-shrink: 0;
+}
+
+/* ─── Module Group ──────────────────────────────────────────── */
+.marks-group {
+  margin-bottom: var(--space-6);
+  animation: fadeIn var(--transition-base);
+}
+
+.marks-group__header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin-bottom: var(--space-3);
+  padding-bottom: var(--space-2);
+  border-bottom: 1px solid var(--border-default);
+}
+
+.marks-group__dot {
+  width: 10px;
+  height: 10px;
+  border-radius: var(--radius-full);
+  flex-shrink: 0;
+}
+
+.marks-group__name {
+  font-size: var(--text-base);
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.marks-group__count {
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+  margin-left: auto;
+}
+
+/* ─── Mark Row ──────────────────────────────────────────────── */
+.mark-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  padding: var(--space-4) var(--space-5);
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-lg);
+  margin-bottom: var(--space-2);
+  transition: all var(--transition-fast);
+  position: relative;
+}
+
+.mark-row:hover {
+  border-color: var(--border-hover);
+  background: var(--bg-hover);
+}
+
+.mark-row__info {
+  flex: 1;
+  min-width: 0;
+}
+
+.mark-row__title {
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 2px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mark-row__date {
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+}
+
+.mark-row__type-badge {
+  display: inline-flex;
+  align-items: center;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  padding: 2px var(--space-2);
+  border-radius: var(--radius-sm);
+  background: var(--bg-surface);
+  color: var(--text-secondary);
+  text-transform: capitalize;
+  flex-shrink: 0;
+}
+
+.mark-row__score {
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.mark-row__pct {
+  font-family: var(--font-mono);
+  font-size: var(--text-base);
+  font-weight: 700;
+  min-width: 52px;
+  text-align: right;
+  flex-shrink: 0;
+}
+
+.mark-row__delete {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: none;
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  opacity: 0;
+  transition: all var(--transition-fast);
+  flex-shrink: 0;
+}
+
+.mark-row:hover .mark-row__delete {
+  opacity: 1;
+}
+
+.mark-row__delete:hover {
+  background: var(--color-danger-light);
+  color: var(--color-danger);
+}
+
+/* ─── Mark Form ─────────────────────────────────────────────── */
+.mark-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+.mark-form__group {
+  display: flex;
+  flex-direction: column;
+}
+
+.mark-form__row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-4);
+}
+
+.mark-form__row--three {
+  grid-template-columns: 1fr 1fr 1fr;
+}
+
+@media (max-width: 480px) {
+  .mark-form__row,
+  .mark-form__row--three {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ─── Live Preview ──────────────────────────────────────────── */
+.mark-form__preview {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-3);
+  background: var(--bg-surface);
+  border-radius: var(--radius-lg);
+  padding: var(--space-4);
+}
+
+.mark-form__preview-value {
+  font-family: var(--font-mono);
+  font-size: var(--text-3xl);
+  font-weight: 700;
+  line-height: 1;
+}
+
+.mark-form__preview-label {
+  font-size: var(--text-sm);
+  color: var(--text-muted);
+}
+
+/* ─── Grade Scale Legend ────────────────────────────────────── */
+.grade-scale {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-xl);
+  padding: var(--space-5);
+  margin-bottom: var(--space-6);
+}
+
+.grade-scale__title {
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin-bottom: var(--space-3);
+}
+
+.grade-scale__items {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.grade-scale__item {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-xs);
+  font-weight: 500;
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--radius-full);
+}
+
+.grade-scale__item-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: var(--radius-full);
+  flex-shrink: 0;
+}
+
+/* ─── Type Badges (color variants) ──────────────────────────── */
+.type-badge--exam {
+  background: var(--color-danger-light);
+  color: var(--color-danger);
+}
+
+.type-badge--test {
+  background: var(--color-accent-light);
+  color: var(--color-accent);
+}
+
+.type-badge--assignment {
+  background: var(--color-primary-light);
+  color: var(--color-primary);
+}
+
+.type-badge--quiz {
+  background: var(--color-secondary-light);
+  color: var(--color-secondary);
+}
+
+.type-badge--project {
+  background: var(--color-success-light);
+  color: var(--color-success);
+}
+
+.type-badge--other {
+  background: var(--bg-surface);
+  color: var(--text-muted);
+}
+
+/* ─── Modal Actions ─────────────────────────────────────────── */
+.modal__actions {
+  display: flex;
+  gap: var(--space-3);
+  justify-content: flex-end;
+  margin-top: var(--space-2);
+}
+
+@media (max-width: 768px) {
+  .marks-overall {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--space-3);
+  }
+
+  .marks-overall__value {
+    font-size: var(--text-4xl);
+  }
+
+  .mark-row {
+    flex-wrap: wrap;
+    gap: var(--space-2);
+  }
+
+  .mark-row__score {
+    order: 5;
+  }
+
+  .mark-row__pct {
+    order: 4;
+  }
+}
