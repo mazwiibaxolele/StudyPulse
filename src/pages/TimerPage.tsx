@@ -73,21 +73,19 @@ export default function TimerPage() {
   const [sessionNotes, setSessionNotes] = useState('');
 
   // Tick interval
-  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
-
   useEffect(() => {
+    const worker = new Worker(new URL('../lib/timerWorker.ts', import.meta.url), { type: 'module' });
+    
+    worker.onmessage = () => {
+      useTimerStore.getState().tick();
+    };
+
     if (timer.isRunning) {
-      intervalRef.current = setInterval(() => {
-        timer.tick();
-      }, 1000);
-    } else {
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-        intervalRef.current = null;
-      }
+      worker.postMessage('start');
     }
+
     return () => {
-      if (intervalRef.current) clearInterval(intervalRef.current);
+      worker.terminate();
     };
   }, [timer.isRunning]);
 
