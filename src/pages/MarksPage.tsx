@@ -223,6 +223,9 @@ export default function MarksPage() {
           const totalWeight = groupMarks.reduce((acc, m) => acc + (m.weight || 1), 0);
           const weightedSum = groupMarks.reduce((acc, m) => acc + (m.percentage * (m.weight || 1)), 0);
           const moduleAvg = totalWeight > 0 ? weightedSum / totalWeight : 0;
+          
+          // Absolute accumulation (percentage / 100 * weight)
+          const accumulated = groupMarks.reduce((acc, m) => acc + (m.percentage / 100) * (m.weight || 1), 0);
 
           return (
             <div key={moduleId} className="marks-group">
@@ -234,23 +237,35 @@ export default function MarksPage() {
                     {groupMarks.length} mark{groupMarks.length !== 1 ? 's' : ''}
                   </span>
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                  <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Avg:</span>
-                  <span style={{ fontWeight: 600, color: pctColor(moduleAvg) }}>
-                    {moduleAvg.toFixed(1)}%
-                  </span>
-                  <span
-                    className="marks-overall__badge"
-                    style={{
-                      background: `${getGradeInfo(moduleAvg, preferences.gradeScaleId).color}18`,
-                      color: getGradeInfo(moduleAvg, preferences.gradeScaleId).color,
-                      fontSize: '0.7rem',
-                      padding: '0.1rem 0.4rem',
-                      marginLeft: '0.25rem'
-                    }}
-                  >
-                    {getGradeInfo(moduleAvg, preferences.gradeScaleId).symbol}
-                  </span>
+                
+                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                  {/* Accumulated */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                    <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Total so far:</span>
+                    <span style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-primary)' }}>
+                      {accumulated.toFixed(1)}
+                    </span>
+                  </div>
+
+                  {/* Running Average */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                    <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Running Avg:</span>
+                    <span style={{ fontSize: '0.85rem', fontWeight: 600, color: pctColor(moduleAvg) }}>
+                      {moduleAvg.toFixed(1)}%
+                    </span>
+                    <span
+                      className="marks-overall__badge"
+                      style={{
+                        background: `${getGradeInfo(moduleAvg, preferences.gradeScaleId).color}18`,
+                        color: getGradeInfo(moduleAvg, preferences.gradeScaleId).color,
+                        fontSize: '0.65rem',
+                        padding: '0.1rem 0.3rem',
+                        marginLeft: '0.15rem'
+                      }}
+                    >
+                      {getGradeInfo(moduleAvg, preferences.gradeScaleId).symbol}
+                    </span>
+                  </div>
                 </div>
               </div>
               {groupMarks.map(mark => (
