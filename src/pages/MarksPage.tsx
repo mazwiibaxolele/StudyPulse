@@ -83,11 +83,6 @@ export default function MarksPage() {
     return groups;
   }, [sortedMarks]);
 
-  const overallAvg = useMemo(() => {
-    if (marks.length === 0) return null;
-    return marks.reduce((acc, m) => acc + m.percentage, 0) / marks.length;
-  }, [marks]);
-
   /* ─── Live preview ─────────────────────────────────────── */
   const livePercent = useMemo(() => {
     const s = parseFloat(form.score);
@@ -154,27 +149,6 @@ export default function MarksPage() {
         </div>
       </div>
 
-      {/* Overall Average */}
-      {overallAvg != null && (
-        <div className="marks-overall">
-          <span className="marks-overall__value" style={{ color: pctColor(overallAvg) }}>
-            {overallAvg.toFixed(1)}%
-          </span>
-          <div className="marks-overall__meta">
-            <span className="marks-overall__label">Overall Average</span>
-            <span
-              className="marks-overall__badge"
-              style={{
-                background: `${getGradeInfo(overallAvg, preferences.gradeScaleId).color}18`,
-                color: getGradeInfo(overallAvg, preferences.gradeScaleId).color,
-              }}
-            >
-              <Award size={14} />
-              {getGradeInfo(overallAvg, preferences.gradeScaleId).label}
-            </span>
-          </div>
-        </div>
-      )}
 
       {/* Module Filter Tabs */}
       {modules.length > 0 && (
@@ -219,14 +193,27 @@ export default function MarksPage() {
         Array.from(groupedMarks.entries()).map(([moduleId, groupMarks]) => {
           const mod = modules.find(m => m.id === moduleId);
           if (!mod) return null;
+
+          const totalWeight = groupMarks.reduce((acc, m) => acc + (m.weight || 1), 0);
+          const weightedSum = groupMarks.reduce((acc, m) => acc + (m.percentage * (m.weight || 1)), 0);
+          const moduleAvg = totalWeight > 0 ? weightedSum / totalWeight : 0;
+
           return (
             <div key={moduleId} className="marks-group">
-              <div className="marks-group__header">
-                <span className="marks-group__dot" style={{ background: mod.color }} />
-                <span className="marks-group__name">{mod.name}</span>
-                <span className="marks-group__count">
-                  {groupMarks.length} mark{groupMarks.length !== 1 ? 's' : ''}
-                </span>
+              <div className="marks-group__header" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', paddingBottom: '0.5rem', borderBottom: '1px solid var(--border-default)', marginBottom: '1rem' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flex: 1 }}>
+                  <span className="marks-group__dot" style={{ background: mod.color }} />
+                  <span className="marks-group__name">{mod.name}</span>
+                  <span className="marks-group__count">
+                    {groupMarks.length} mark{groupMarks.length !== 1 ? 's' : ''}
+                  </span>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Avg:</span>
+                  <span style={{ fontWeight: 600, color: pctColor(moduleAvg) }}>
+                    {moduleAvg.toFixed(1)}%
+                  </span>
+                </div>
               </div>
               {groupMarks.map(mark => (
                 <div key={mark.id} className="mark-row">

@@ -64,10 +64,13 @@ export default function DashboardPage() {
     const totalSessions = weekSessions.length;
     const totalPomodoros = weekSessions.reduce((acc, s) => acc + (s.pomodorosDone || 0), 0);
 
-    // Average mark
-    const avgMark = marks.length > 0
-      ? marks.reduce((acc, m) => acc + m.percentage, 0) / marks.length
-      : null;
+    // Average mark (Weighted)
+    let avgMark: number | null = null;
+    if (marks.length > 0) {
+      const totalWeight = marks.reduce((acc, m) => acc + (m.weight || 1), 0);
+      const weightedSum = marks.reduce((acc, m) => acc + (m.percentage * (m.weight || 1)), 0);
+      avgMark = totalWeight > 0 ? weightedSum / totalWeight : null;
+    }
 
     // Streak (consecutive days with sessions)
     let streak = 0;
@@ -107,14 +110,36 @@ export default function DashboardPage() {
       const dDiff = new Date(a.date).getTime() - new Date(b.date).getTime();
       return dDiff !== 0 ? dDiff : new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
     });
-    return sorted.map(m => {
+
+    const trendMap = new Map<string, any>();
+    
+    sorted.forEach(m => {
+      const dateStr = new Date(m.date).toLocaleDateString('en', { month: 'short', day: 'numeric' });
       const mod = modules.find(mod => mod.id === m.moduleId);
-      return {
-        date: new Date(m.date).toLocaleDateString('en', { month: 'short', day: 'numeric' }),
-        percentage: Math.round(m.percentage * 10) / 10,
-        module: mod?.name ?? 'Unknown',
-        title: m.title,
-      };
+      const modCode = mod?.code ?? 'Unknown';
+
+      if (!trendMap.has(dateStr)) {
+        trendMap.set(dateStr, { date: dateStr });
+      }
+
+      const entry = trendMap.get(dateStr);
+      // Average marks on the same day for the same module
+      if (entry[modCode] !== undefined) {
+        entry[modCode] = (entry[modCode] + m.percentage) / 2;
+      } else {
+        entry[modCode] = m.percentage;
+      }
+    });
+
+    return Array.from(trendMap.values()).map(entry => {
+      // Round all percentages to 1 decimal place
+      const rounded: any = { ...entry };
+      for (const key in rounded) {
+        if (key !== 'date' && typeof rounded[key] === 'number') {
+          rounded[key] = Math.round(rounded[key] * 10) / 10;
+        }
+      }
+      return rounded;
     });
   }, [marks, modules]);
 
@@ -260,15 +285,19 @@ export default function DashboardPage() {
                     <XAxis dataKey="date" tick={{ fill: 'var(--text-muted)', fontSize: 12 }} stroke="var(--border-default)" />
                     <YAxis domain={[0, 100]} tick={{ fill: 'var(--text-muted)', fontSize: 12 }} stroke="var(--border-default)" />
                     <Tooltip content={<CustomTooltip />} />
-                    <Line
-                      type="monotone"
-                      dataKey="percentage"
-                      name="Mark"
-                      stroke="var(--color-primary)"
-                      strokeWidth={2.5}
-                      dot={{ fill: 'var(--color-primary)', strokeWidth: 0, r: 4 }}
-                      activeDot={{ r: 6, fill: 'var(--color-primary)' }}
-                    />
+                    {modules.filter(mod => marks.some(m => m.moduleId === mod.id)).map(mod => (
+                      <Line
+                        key={mod.id}
+                        type="monotone"
+                        dataKey={mod.code}
+                        name={mod.code}
+                        stroke={mod.color}
+                        strokeWidth={2.5}
+                        connectNulls={true}
+                        dot={{ fill: mod.color, strokeWidth: 0, r: 4 }}
+                        activeDot={{ r: 6, fill: mod.color }}
+                      />
+                    ))}
                   </LineChart>
                 </ResponsiveContainer>
               </div>
