@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { supabase } from '../lib/supabase';
+
 import type { Module, Mark, StudySession, UserPreferences } from '../types';
 import { DEFAULT_PREFERENCES } from '../types';
 import {
@@ -20,6 +20,7 @@ interface AppStore {
   isLoaded: boolean;
 
   // Data loading
+  init: () => void;
   loadAll: () => Promise<void>;
 
   // Modules
@@ -28,7 +29,7 @@ interface AppStore {
   archiveModule: (id: string) => Promise<void>;
 
   // Marks
-  addMark: (data: Omit<Mark, 'id' | 'percentage' | 'createdAt'>) => Promise<Mark>;
+  addMark: (data: Omit<Mark, 'id' | 'createdAt'>) => Promise<Mark>;
   deleteMark: (id: string) => Promise<void>;
 
   // Sessions
@@ -53,27 +54,33 @@ export const useAppStore = create<AppStore>()((set) => ({
 
   setUser: (user) => set({ user, isAuthenticated: !!user }),
 
-  loadAll: async () => {
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      const user = session?.user ?? null;
-      set({ user, isAuthenticated: !!user });
-
-      if (user) {
-        const [modules, marks, sessions, preferences] = await Promise.all([
-          modulesDb.getAll(),
-          marksDb.getAll(),
-          sessionsDb.getAll(),
-          preferencesDb.get(),
-        ]);
-        set({ modules, marks, sessions, preferences, isLoaded: true });
-      } else {
+  init: () => {
+    import('../lib/firebase').then(({ auth }) => {
+      auth.onAuthStateChanged(async (user) => {
+        if (user) {
+          set({ user: { id: user.uid, email: user.email || undefined } as any });
+          try {
+            const [modules, sessions, marks, preferences] = await Promise.all([
+              modulesDb.getAll(),
+              sessionsDb.getAll(),
+              marksDb.getAll(),
+              preferencesDb.get(),
+            ]);
+            set({ modules, sessions, marks, preferences: preferences || DEFAULT_PREFERENCES });
+          } catch (error) {
+            console.error('Failed to fetch data:', error);
+          }
+        } else {
+          set({ user: null, modules: [], sessions: [], marks: [], preferences: DEFAULT_PREFERENCES });
+        }
         set({ isLoaded: true });
-      }
-    } catch (e) {
-      console.error('Failed to load data:', e);
-      set({ isLoaded: true });
-    }
+      });
+    });
+  },
+
+  loadAll: async () => {
+    // Replaced by auth.onAuthStateChanged listener, we just return
+    return;
   },
 
   addModule: async (data) => {
@@ -116,7 +123,8 @@ export const useAppStore = create<AppStore>()((set) => ({
   },
 
   signOut: async () => {
-    await supabase.auth.signOut();
+    const { auth } = await import('../lib/firebase');
+    await auth.signOut();
     set({
       user: null,
       isAuthenticated: false,

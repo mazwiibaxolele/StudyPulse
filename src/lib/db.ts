@@ -1,266 +1,188 @@
-import { supabase } from './supabase';
-import type { Module, StudySession, Mark, ChatMessage, UserPreferences } from '../types';
-import { DEFAULT_PREFERENCES } from '../types';
+import { db, auth } from './firebase';
+import { 
+  collection, 
+  doc, 
+  getDocs, 
+  getDoc, 
+  addDoc, 
+  updateDoc, 
+  deleteDoc, 
+  query, 
+  where, 
+  orderBy, 
+  serverTimestamp 
+} from 'firebase/firestore';
+import type { Module, StudySession, Mark, UserPreferences, ChatMessage } from '../types';
+
+function requireUser() {
+  const user = auth.currentUser;
+  if (!user) throw new Error("Not logged in");
+  return user.uid;
+}
+
+// Helper to convert Firestore document to our type
+function convertDoc<T>(doc: any): T {
+  const data = doc.data();
+  return {
+    ...data,
+    id: doc.id,
+    createdAt: data.createdAt?.toDate ? data.createdAt.toDate().toISOString() : new Date().toISOString()
+  } as T;
+}
 
 export const modulesDb = {
   async getAll(): Promise<Module[]> {
-    const { data, error } = await supabase
-      .from('modules')
-      .select('*')
-      .eq('is_active', true)
-      .order('created_at', { ascending: true });
-    if (error) throw error;
-    // Map snake_case to camelCase
-    return data.map((m: any) => ({
-      id: m.id,
-      name: m.name,
-      code: m.code,
-      color: m.color,
-      credits: m.credits,
-      isActive: m.is_active,
-      createdAt: m.created_at,
-    }));
+    const uid = requireUser();
+    const q = query(
+      collection(db, 'modules'), 
+      where('user_id', '==', uid),
+      where('isActive', '==', true),
+      orderBy('createdAt', 'asc')
+    );
+    const snapshot = await getDocs(q);
+    return snapshot.docs.map(doc => convertDoc<Module>(doc));
   },
 
   async create(data: Omit<Module, 'id' | 'createdAt' | 'isActive'>): Promise<Module> {
-    const { data: userData } = await supabase.auth.getUser();
-    if (!userData.user) throw new Error("Not logged in");
-
-    const { data: m, error } = await supabase
-      .from('modules')
-      .insert({
-        user_id: userData.user.id,
-        name: data.name,
-        code: data.code,
-        color: data.color,
-        credits: data.credits,
-      })
-      .select()
-      .single();
-    if (error) throw error;
-    return {
-      id: m.id,
-      name: m.name,
-      code: m.code,
-      color: m.color,
-      credits: m.credits,
-      isActive: m.is_active,
-      createdAt: m.created_at,
-    };
+    const uid = requireUser();
+    const docRef = await addDoc(collection(db, 'modules'), {
+      ...data,
+      user_id: uid,
+      isActive: true,
+      createdAt: serverTimestamp()
+    });
+    const newDoc = await getDoc(docRef);
+    return convertDoc<Module>(newDoc);
   },
 
-  async update(id: string, data: Partial<Module>): Promise<void> {
-    const updateData: any = {};
-    if (data.name !== undefined) updateData.name = data.name;
-    if (data.code !== undefined) updateData.code = data.code;
-    if (data.color !== undefined) updateData.color = data.color;
-    if (data.credits !== undefined) updateData.credits = data.credits;
-    if (data.isActive !== undefined) updateData.is_active = data.isActive;
-
-    const { error } = await supabase.from('modules').update(updateData).eq('id', id);
-    if (error) throw error;
+  async update(id: string, data: Partial<Module>): Promise<Module> {
+    const docRef = doc(db, 'modules', id);
+    await updateDoc(docRef, data);
+    const updatedDoc = await getDoc(docRef);
+    return convertDoc<Module>(updatedDoc);
   },
 
   async archive(id: string): Promise<void> {
-    await this.update(id, { isActive: false });
-  },
-
-  async delete(id: string): Promise<void> {
-    const { error } = await supabase.from('modules').delete().eq('id', id);
-    if (error) throw error;
-  },
+    const docRef = doc(db, 'modules', id);
+    await updateDoc(docRef, { isActive: false });
+  }
 };
 
 export const sessionsDb = {
   async getAll(): Promise<StudySession[]> {
-    const { data, error } = await supabase
-      .from('study_sessions')
-      .select('*')
-      .order('started_at', { ascending: false });
-    if (error) throw error;
-    return data.map((s: any) => ({
-      id: s.id,
-      moduleId: s.module_id,
-      studyMethod: s.study_method,
-      startedAt: s.started_at,
-      endedAt: s.ended_at,
-      durationMins: s.duration_mins,
-      pomodorosDone: s.pomodoros_done,
-      breaksTaken: s.breaks_taken,
-      focusRating: s.focus_rating,
-      notes: s.notes,
-      createdAt: s.created_at,
-    }));
+    const uid = requireUser();
+    const q = query(
+      collection(db, 'sessions'), 
+      where('user_id', '==', uid),
+      orderBy('createdAt', 'desc')
+    );
+    const snapshot = await getDocs(q);
+    return snapshot.docs.map(doc => convertDoc<StudySession>(doc));
   },
 
   async create(data: Omit<StudySession, 'id' | 'createdAt'>): Promise<StudySession> {
-    const { data: userData } = await supabase.auth.getUser();
-    if (!userData.user) throw new Error("Not logged in");
-
-    const { data: s, error } = await supabase
-      .from('study_sessions')
-      .insert({
-        user_id: userData.user.id,
-        module_id: data.moduleId,
-        study_method: data.studyMethod,
-        started_at: data.startedAt,
-        ended_at: data.endedAt,
-        duration_mins: data.durationMins,
-        pomodoros_done: data.pomodorosDone,
-        breaks_taken: data.breaksTaken,
-        focus_rating: data.focusRating,
-        notes: data.notes,
-      })
-      .select()
-      .single();
-    if (error) throw error;
-    return {
-      id: s.id,
-      moduleId: s.module_id,
-      studyMethod: s.study_method,
-      startedAt: s.started_at,
-      endedAt: s.ended_at,
-      durationMins: s.duration_mins,
-      pomodorosDone: s.pomodoros_done,
-      breaksTaken: s.breaks_taken,
-      focusRating: s.focus_rating,
-      notes: s.notes,
-      createdAt: s.created_at,
-    };
-  },
+    const uid = requireUser();
+    const docRef = await addDoc(collection(db, 'sessions'), {
+      ...data,
+      user_id: uid,
+      createdAt: serverTimestamp()
+    });
+    const newDoc = await getDoc(docRef);
+    return convertDoc<StudySession>(newDoc);
+  }
 };
 
 export const marksDb = {
   async getAll(): Promise<Mark[]> {
-    const { data, error } = await supabase
-      .from('marks')
-      .select('*')
-      .order('date', { ascending: false });
-    if (error) throw error;
-    return data.map((m: any) => ({
-      id: m.id,
-      moduleId: m.module_id,
-      title: m.title,
-      type: m.type,
-      score: m.score,
-      total: m.total,
-      percentage: m.percentage,
-      date: m.date,
-      weight: m.weight,
-      createdAt: m.created_at,
-    }));
+    const uid = requireUser();
+    const q = query(
+      collection(db, 'marks'), 
+      where('user_id', '==', uid),
+      orderBy('createdAt', 'desc')
+    );
+    const snapshot = await getDocs(q);
+    return snapshot.docs.map(doc => convertDoc<Mark>(doc));
   },
 
-  async create(data: Omit<Mark, 'id' | 'percentage' | 'createdAt'>): Promise<Mark> {
-    const { data: userData } = await supabase.auth.getUser();
-    if (!userData.user) throw new Error("Not logged in");
-
-    const percentage = (data.score / data.total) * 100;
-    const { data: m, error } = await supabase
-      .from('marks')
-      .insert({
-        user_id: userData.user.id,
-        module_id: data.moduleId,
-        title: data.title,
-        type: data.type,
-        score: data.score,
-        total: data.total,
-        percentage,
-        date: data.date,
-        weight: data.weight,
-      })
-      .select()
-      .single();
-    if (error) throw error;
-    return {
-      id: m.id,
-      moduleId: m.module_id,
-      title: m.title,
-      type: m.type,
-      score: m.score,
-      total: m.total,
-      percentage: m.percentage,
-      date: m.date,
-      weight: m.weight,
-      createdAt: m.created_at,
-    };
+  async create(data: Omit<Mark, 'id' | 'createdAt'>): Promise<Mark> {
+    const uid = requireUser();
+    const docRef = await addDoc(collection(db, 'marks'), {
+      ...data,
+      user_id: uid,
+      createdAt: serverTimestamp()
+    });
+    const newDoc = await getDoc(docRef);
+    return convertDoc<Mark>(newDoc);
   },
 
   async delete(id: string): Promise<void> {
-    const { error } = await supabase.from('marks').delete().eq('id', id);
-    if (error) throw error;
-  },
+    await deleteDoc(doc(db, 'marks', id));
+  }
 };
 
 export const preferencesDb = {
-  async get(): Promise<UserPreferences> {
-    const { data, error } = await supabase.from('user_preferences').select('*').single();
-    if (error || !data) return DEFAULT_PREFERENCES;
-    return {
-      focusDuration: data.focus_duration,
-      shortBreakDuration: data.short_break_duration,
-      longBreakDuration: data.long_break_duration,
-      pomodorosBeforeLongBreak: data.pomodoros_before_long_break,
-      gradeScaleId: data.grade_scale_id,
-      autoStartBreaks: data.auto_start_breaks,
-      soundEnabled: data.sound_enabled,
-    };
+  async get(): Promise<UserPreferences | null> {
+    const uid = requireUser();
+    const docRef = doc(db, 'preferences', uid);
+    const snap = await getDoc(docRef);
+    if (!snap.exists()) return null;
+    return snap.data() as UserPreferences;
   },
 
-  async update(data: Partial<UserPreferences>): Promise<void> {
-    const { data: user } = await supabase.auth.getUser();
-    if (!user.user) return;
-
-    const updateData: any = {};
-    if (data.focusDuration !== undefined) updateData.focus_duration = data.focusDuration;
-    if (data.shortBreakDuration !== undefined) updateData.short_break_duration = data.shortBreakDuration;
-    if (data.longBreakDuration !== undefined) updateData.long_break_duration = data.longBreakDuration;
-    if (data.pomodorosBeforeLongBreak !== undefined) updateData.pomodoros_before_long_break = data.pomodorosBeforeLongBreak;
-    if (data.gradeScaleId !== undefined) updateData.grade_scale_id = data.gradeScaleId;
-    if (data.autoStartBreaks !== undefined) updateData.auto_start_breaks = data.autoStartBreaks;
-    if (data.soundEnabled !== undefined) updateData.sound_enabled = data.soundEnabled;
-
-    await supabase.from('user_preferences').update(updateData).eq('user_id', user.user.id);
-  },
+  async update(data: Partial<UserPreferences>): Promise<UserPreferences> {
+    const uid = requireUser();
+    const docRef = doc(db, 'preferences', uid);
+    const snap = await getDoc(docRef);
+    if (!snap.exists()) {
+      await updateDoc(docRef, data); // Wait, if it doesn't exist, we must use setDoc
+      // Let's use setDoc with merge instead
+      const { setDoc } = await import('firebase/firestore');
+      await setDoc(docRef, data, { merge: true });
+    } else {
+      await updateDoc(docRef, data);
+    }
+    const updated = await getDoc(docRef);
+    return updated.data() as UserPreferences;
+  }
 };
 
 export const chatDb = {
   async getAll(): Promise<ChatMessage[]> {
-    const { data, error } = await supabase
-      .from('chat_messages')
-      .select('*')
-      .order('created_at', { ascending: true });
-    if (error) return [];
-    return data.map((m: any) => ({
-      id: m.id,
-      role: m.role,
-      content: m.content,
-      createdAt: m.created_at,
-    }));
+    try {
+      const uid = requireUser();
+      const q = query(
+        collection(db, 'chat_messages'), 
+        where('user_id', '==', uid),
+        orderBy('createdAt', 'asc')
+      );
+      const snapshot = await getDocs(q);
+      return snapshot.docs.map(doc => convertDoc<ChatMessage>(doc));
+    } catch (error) {
+      console.error(error);
+      return [];
+    }
   },
 
   async add(role: 'user' | 'assistant', content: string): Promise<ChatMessage> {
-    const { data: userData } = await supabase.auth.getUser();
-    if (!userData.user) throw new Error("Not logged in");
-
-    const { data: m, error } = await supabase
-      .from('chat_messages')
-      .insert({ user_id: userData.user.id, role, content })
-      .select()
-      .single();
-    if (error) throw error;
-    return {
-      id: m.id,
-      role: m.role,
-      content: m.content,
-      createdAt: m.created_at,
-    };
+    const uid = requireUser();
+    const docRef = await addDoc(collection(db, 'chat_messages'), {
+      user_id: uid,
+      role,
+      content,
+      createdAt: serverTimestamp()
+    });
+    const newDoc = await getDoc(docRef);
+    return convertDoc<ChatMessage>(newDoc);
   },
 
   async clear(): Promise<void> {
-    const { data: user } = await supabase.auth.getUser();
-    if (user.user) {
-      await supabase.from('chat_messages').delete().eq('user_id', user.user.id);
-    }
-  },
+    const uid = requireUser();
+    const q = query(
+      collection(db, 'chat_messages'), 
+      where('user_id', '==', uid)
+    );
+    const snapshot = await getDocs(q);
+    const promises = snapshot.docs.map(d => deleteDoc(d.ref));
+    await Promise.all(promises);
+  }
 };

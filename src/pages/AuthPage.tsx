@@ -1,6 +1,11 @@
 import { useState, type FormEvent } from 'react';
 import { Activity, AlertCircle } from 'lucide-react';
-import { supabase } from '../lib/supabase';
+import { auth } from '../lib/firebase';
+import { 
+  signInWithEmailAndPassword, 
+  createUserWithEmailAndPassword, 
+  updateProfile 
+} from 'firebase/auth';
 import './AuthPage.css';
 
 type AuthMode = 'signin' | 'signup';
@@ -47,26 +52,16 @@ export default function AuthPage() {
 
     try {
       if (mode === 'signin') {
-        const { error: signInError } = await supabase.auth.signInWithPassword({
-          email: email.trim(),
-          password,
-        });
-        if (signInError) throw signInError;
+        await signInWithEmailAndPassword(auth, email.trim(), password);
       } else {
-        const { error: signUpError } = await supabase.auth.signUp({
-          email: email.trim(),
-          password,
-          options: {
-            data: {
-              name: name.trim(),
-            },
-          },
-        });
-        if (signUpError) throw signUpError;
-        else setError('Account created! You can now sign in (check email for confirmation if required).');
+        const { user } = await createUserWithEmailAndPassword(auth, email.trim(), password);
+        await updateProfile(user, { displayName: name.trim() });
+        // The auth state listener in appStore will pick this up automatically
       }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Something went wrong.');
+    } catch (err: any) {
+      if (err.code === 'auth/email-already-in-use') setError('An account already exists with this email.');
+      else if (err.code === 'auth/invalid-credential') setError('Invalid email or password.');
+      else setError(err instanceof Error ? err.message : 'Something went wrong.');
     } finally {
       setLoading(false);
     }

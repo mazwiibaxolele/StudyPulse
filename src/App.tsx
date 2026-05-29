@@ -1,5 +1,4 @@
 import { useEffect, lazy, Suspense } from 'react';
-import { supabase } from './lib/supabase';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { useAppStore } from './stores/appStore';
 import AppLayout from './components/layout/AppLayout';
@@ -45,17 +44,11 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 // ─── App ─────────────────────────────────────────────────────
 
 export default function App() {
-  const { loadAll, isAuthenticated } = useAppStore();
+  const { init, isAuthenticated } = useAppStore();
 
   useEffect(() => {
-    loadAll();
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
-      if (event === 'SIGNED_IN' || event === 'SIGNED_OUT') {
-        loadAll();
-      }
-    });
-    return () => subscription.unsubscribe();
-  }, [loadAll]);
+    init();
+  }, [init]);
 
   return (
     <Suspense fallback={<PageLoader />}>

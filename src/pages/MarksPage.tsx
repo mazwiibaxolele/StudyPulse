@@ -111,6 +111,7 @@ export default function MarksPage() {
       type: form.type,
       score,
       total,
+      percentage: livePercent!,
       date: form.date,
       weight: isNaN(weight) || weight <= 0 ? 1 : weight,
     });
