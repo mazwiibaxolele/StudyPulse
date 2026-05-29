@@ -197,7 +197,7 @@ export default function TimerPage() {
 
   // ─── Pomodoro dots ─────────────────────────────────────────
 
-  const maxPomodoros = 3;
+  const maxPomodoros = 6;
   const dots = Array.from({ length: maxPomodoros }, (_, i) => i < timer.pomodoroCount);
 
   // ─── Render ────────────────────────────────────────────────

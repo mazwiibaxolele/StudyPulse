@@ -126,7 +126,7 @@ export const useTimerStore = create<TimerStore>()(
           const newPomodoroCount = state.pomodoroCount + 1;
           const newTotalPomodoros = state.totalPomodoros + 1;
 
-          if (newPomodoroCount >= maxPomodoros) {
+          if (newPomodoroCount % maxPomodoros === 0) {
             // Time for a long break
             const duration = getPhaseDuration('long_break');
             set({
@@ -164,13 +164,25 @@ export const useTimerStore = create<TimerStore>()(
             targetTime: prefs.autoStartBreaks ? Date.now() + duration * 1000 : null,
           });
         } else if (state.phase === 'long_break') {
-          // After long break → show completion modal
-          set({
-            isRunning: false,
-            timeRemaining: 0,
-            showCompletionModal: true,
-            targetTime: null,
-          });
+          if (state.pomodoroCount >= 6) {
+            // After 6 total pomodoros, finish the entire session block
+            set({
+              isRunning: false,
+              timeRemaining: 0,
+              showCompletionModal: true,
+              targetTime: null,
+            });
+          } else {
+            // Continue with next focus block after the long break (e.g. after session 3)
+            const duration = getPhaseDuration('focus');
+            set({
+              phase: 'focus',
+              timeRemaining: duration,
+              totalDuration: duration,
+              isRunning: prefs.autoStartBreaks,
+              targetTime: prefs.autoStartBreaks ? Date.now() + duration * 1000 : null,
+            });
+          }
         }
       },
 
@@ -183,7 +195,7 @@ export const useTimerStore = create<TimerStore>()(
           const newTotalPomodoros = state.totalPomodoros + 1;
           const maxPomodoros = getMaxPomodoros();
 
-          if (newPomodoroCount >= maxPomodoros) {
+          if (newPomodoroCount % maxPomodoros === 0) {
             const duration = getPhaseDuration('long_break');
             set({
               phase: 'long_break',
@@ -218,12 +230,23 @@ export const useTimerStore = create<TimerStore>()(
             targetTime: prefs.autoStartBreaks ? Date.now() + duration * 1000 : null,
           });
         } else if (state.phase === 'long_break') {
-          set({
-            isRunning: false,
-            timeRemaining: 0,
-            showCompletionModal: true,
-            targetTime: null,
-          });
+          if (state.pomodoroCount >= 6) {
+            set({
+              isRunning: false,
+              timeRemaining: 0,
+              showCompletionModal: true,
+              targetTime: null,
+            });
+          } else {
+            const duration = getPhaseDuration('focus');
+            set({
+              phase: 'focus',
+              timeRemaining: duration,
+              totalDuration: duration,
+              isRunning: prefs.autoStartBreaks,
+              targetTime: prefs.autoStartBreaks ? Date.now() + duration * 1000 : null,
+            });
+          }
         }
       },
 
