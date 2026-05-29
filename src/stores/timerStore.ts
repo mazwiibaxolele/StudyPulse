@@ -74,6 +74,7 @@ export const useTimerStore = create<TimerStore>()(
       sessionStartedAt: null,
       breaksTaken: 0,
       showCompletionModal: false,
+      targetTime: null, // added for background sync
 
       startTimer: (moduleId: string, method: StudyMethod) => {
         const duration = getPhaseDuration('focus');
@@ -89,22 +90,27 @@ export const useTimerStore = create<TimerStore>()(
           sessionStartedAt: new Date().toISOString(),
           breaksTaken: 0,
           showCompletionModal: false,
+          targetTime: Date.now() + duration * 1000,
         });
       },
 
       pauseTimer: () => {
-        set({ isRunning: false });
+        set({ isRunning: false, targetTime: null });
       },
 
       resumeTimer: () => {
-        set({ isRunning: true });
+        const state = get();
+        set({
+          isRunning: true,
+          targetTime: Date.now() + state.timeRemaining * 1000,
+        });
       },
 
       tick: () => {
         const state = get();
-        if (!state.isRunning || state.phase === 'idle') return;
+        if (!state.isRunning || state.phase === 'idle' || !state.targetTime) return;
 
-        const newTime = state.timeRemaining - 1;
+        const newTime = Math.ceil((state.targetTime - Date.now()) / 1000);
 
         if (newTime > 0) {
           set({ timeRemaining: newTime });
@@ -130,6 +136,7 @@ export const useTimerStore = create<TimerStore>()(
               totalPomodoros: newTotalPomodoros,
               breaksTaken: state.breaksTaken + 1,
               isRunning: prefs.autoStartBreaks,
+              targetTime: prefs.autoStartBreaks ? Date.now() + duration * 1000 : null,
             });
           } else {
             // Short break
@@ -142,6 +149,7 @@ export const useTimerStore = create<TimerStore>()(
               totalPomodoros: newTotalPomodoros,
               breaksTaken: state.breaksTaken + 1,
               isRunning: prefs.autoStartBreaks,
+              targetTime: prefs.autoStartBreaks ? Date.now() + duration * 1000 : null,
             });
           }
         } else if (state.phase === 'short_break') {
@@ -152,6 +160,7 @@ export const useTimerStore = create<TimerStore>()(
             timeRemaining: duration,
             totalDuration: duration,
             isRunning: prefs.autoStartBreaks,
+            targetTime: prefs.autoStartBreaks ? Date.now() + duration * 1000 : null,
           });
         } else if (state.phase === 'long_break') {
           // After long break → show completion modal
@@ -159,6 +168,7 @@ export const useTimerStore = create<TimerStore>()(
             isRunning: false,
             timeRemaining: 0,
             showCompletionModal: true,
+            targetTime: null,
           });
         }
       },
@@ -182,6 +192,7 @@ export const useTimerStore = create<TimerStore>()(
               totalPomodoros: newTotalPomodoros,
               breaksTaken: state.breaksTaken + 1,
               isRunning: prefs.autoStartBreaks,
+              targetTime: prefs.autoStartBreaks ? Date.now() + duration * 1000 : null,
             });
           } else {
             const duration = getPhaseDuration('short_break');
@@ -193,6 +204,7 @@ export const useTimerStore = create<TimerStore>()(
               totalPomodoros: newTotalPomodoros,
               breaksTaken: state.breaksTaken + 1,
               isRunning: prefs.autoStartBreaks,
+              targetTime: prefs.autoStartBreaks ? Date.now() + duration * 1000 : null,
             });
           }
         } else if (state.phase === 'short_break') {
@@ -202,12 +214,14 @@ export const useTimerStore = create<TimerStore>()(
             timeRemaining: duration,
             totalDuration: duration,
             isRunning: prefs.autoStartBreaks,
+            targetTime: prefs.autoStartBreaks ? Date.now() + duration * 1000 : null,
           });
         } else if (state.phase === 'long_break') {
           set({
             isRunning: false,
             timeRemaining: 0,
             showCompletionModal: true,
+            targetTime: null,
           });
         }
       },
@@ -225,6 +239,7 @@ export const useTimerStore = create<TimerStore>()(
           sessionStartedAt: null,
           breaksTaken: 0,
           showCompletionModal: false,
+          targetTime: null,
         });
       },
 
@@ -266,6 +281,7 @@ export const useTimerStore = create<TimerStore>()(
           sessionStartedAt: null,
           breaksTaken: 0,
           showCompletionModal: false,
+          targetTime: null,
         });
       },
 

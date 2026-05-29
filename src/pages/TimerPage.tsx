@@ -35,6 +35,31 @@ const METHOD_ICONS: Record<string, React.ComponentType<{ size?: number }>> = {
 
 // ─── Component ───────────────────────────────────────────────
 
+function playChime() {
+  try {
+    const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
+    if (!AudioContext) return;
+    const ctx = new AudioContext();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(880, ctx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(440, ctx.currentTime + 0.5);
+    
+    gain.gain.setValueAtTime(0, ctx.currentTime);
+    gain.gain.linearRampToValueAtTime(0.5, ctx.currentTime + 0.05);
+    gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.5);
+    
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start();
+    osc.stop(ctx.currentTime + 0.5);
+  } catch(e) {
+    console.error('Audio play failed', e);
+  }
+}
+
 export default function TimerPage() {
   const timer = useTimerStore();
   const { modules, refreshSessions } = useAppStore();
@@ -73,6 +98,23 @@ export default function TimerPage() {
     }
   }, [modules, selectedModuleId]);
 
+  // Phase transition sounds & notifications
+  const prevPhaseRef = useRef(timer.phase);
+  useEffect(() => {
+    if (prevPhaseRef.current !== timer.phase && timer.phase !== 'idle' && prevPhaseRef.current !== 'idle') {
+      playChime();
+      
+      if ('Notification' in window && Notification.permission === 'granted') {
+        const title = timer.phase === 'focus' ? 'Time to focus!' : 'Break time!';
+        const body = timer.phase === 'focus' 
+          ? 'Your break is over, let us get back to studying.' 
+          : 'Take a short break and relax.';
+        new Notification(title, { body, icon: '/favicon.svg' });
+      }
+    }
+    prevPhaseRef.current = timer.phase;
+  }, [timer.phase]);
+
   // ─── Derived values ────────────────────────────────────────
 
   const progress = timer.totalDuration > 0
@@ -99,6 +141,16 @@ export default function TimerPage() {
 
   const activeModule = modules.find(m => m.id === timer.activeModuleId);
 
+  // Sync document title
+  useEffect(() => {
+    if (timer.phase !== 'idle' && timer.isRunning) {
+      document.title = `${timeDisplay} - ${phaseLabel} | StudyPulse`;
+    } else {
+      document.title = 'StudyPulse';
+    }
+    return () => { document.title = 'StudyPulse'; };
+  }, [timeDisplay, timer.phase, timer.isRunning, phaseLabel]);
+
   // SVG ring calculations
   const ringSize = 280;
   const strokeWidth = 6;
@@ -110,6 +162,9 @@ export default function TimerPage() {
 
   function handleStart() {
     if (!selectedModuleId) return;
+    if ('Notification' in window && Notification.permission === 'default') {
+      Notification.requestPermission();
+    }
     timer.startTimer(selectedModuleId, selectedMethod);
   }
 
