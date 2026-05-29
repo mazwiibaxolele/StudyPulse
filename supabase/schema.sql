@@ -1,6 +1,3 @@
--- Enable UUID extension
-create extension if not exists "uuid-ossp";
-
 -- Clean up existing tables to ensure a fresh start
 drop trigger if exists on_auth_user_created on auth.users;
 drop function if exists public.handle_new_user();
@@ -12,7 +9,7 @@ drop table if exists public.modules cascade;
 
 -- ─── MODULES ──────────────────────────────────────────────────
 create table public.modules (
-  id uuid primary key default uuid_generate_v4(),
+  id uuid primary key default gen_random_uuid(),
   user_id uuid references auth.users(id) on delete cascade not null,
   name text not null,
   code text,
@@ -21,10 +18,11 @@ create table public.modules (
   is_active boolean default true not null,
   created_at timestamp with time zone default now() not null
 );
+create index idx_modules_user_id on public.modules(user_id);
 
 -- ─── STUDY SESSIONS ───────────────────────────────────────────
 create table public.study_sessions (
-  id uuid primary key default uuid_generate_v4(),
+  id uuid primary key default gen_random_uuid(),
   user_id uuid references auth.users(id) on delete cascade not null,
   module_id uuid references public.modules(id) on delete cascade not null,
   study_method text not null,
@@ -37,10 +35,12 @@ create table public.study_sessions (
   notes text,
   created_at timestamp with time zone default now() not null
 );
+create index idx_sessions_user_id on public.study_sessions(user_id);
+create index idx_sessions_module_id on public.study_sessions(module_id);
 
 -- ─── MARKS ────────────────────────────────────────────────────
 create table public.marks (
-  id uuid primary key default uuid_generate_v4(),
+  id uuid primary key default gen_random_uuid(),
   user_id uuid references auth.users(id) on delete cascade not null,
   module_id uuid references public.modules(id) on delete cascade not null,
   title text not null,
@@ -52,6 +52,8 @@ create table public.marks (
   weight numeric default 1 not null,
   created_at timestamp with time zone default now() not null
 );
+create index idx_marks_user_id on public.marks(user_id);
+create index idx_marks_module_id on public.marks(module_id);
 
 -- ─── USER PREFERENCES ─────────────────────────────────────────
 create table public.user_preferences (
@@ -64,15 +66,17 @@ create table public.user_preferences (
   auto_start_breaks boolean default false not null,
   sound_enabled boolean default true not null
 );
+create index idx_prefs_user_id on public.user_preferences(user_id);
 
 -- ─── CHAT MESSAGES ────────────────────────────────────────────
 create table public.chat_messages (
-  id uuid primary key default uuid_generate_v4(),
+  id uuid primary key default gen_random_uuid(),
   user_id uuid references auth.users(id) on delete cascade not null,
   role text not null check (role in ('user', 'assistant')),
   content text not null,
   created_at timestamp with time zone default now() not null
 );
+create index idx_chat_user_id on public.chat_messages(user_id);
 
 -- ─── ROW LEVEL SECURITY (RLS) ─────────────────────────────────
 
@@ -84,42 +88,47 @@ alter table public.user_preferences enable row level security;
 alter table public.chat_messages enable row level security;
 
 -- Create policies for Modules
-create policy "Users can view their own modules" on public.modules for select using (auth.uid() = user_id);
-create policy "Users can insert their own modules" on public.modules for insert with check (auth.uid() = user_id);
-create policy "Users can update their own modules" on public.modules for update using (auth.uid() = user_id);
-create policy "Users can delete their own modules" on public.modules for delete using (auth.uid() = user_id);
+create policy "Users can view their own modules" on public.modules for select to authenticated using ((select auth.uid()) = user_id);
+create policy "Users can insert their own modules" on public.modules for insert to authenticated with check ((select auth.uid()) = user_id);
+create policy "Users can update their own modules" on public.modules for update to authenticated using ((select auth.uid()) = user_id) with check ((select auth.uid()) = user_id);
+create policy "Users can delete their own modules" on public.modules for delete to authenticated using ((select auth.uid()) = user_id);
 
 -- Create policies for Study Sessions
-create policy "Users can view their own sessions" on public.study_sessions for select using (auth.uid() = user_id);
-create policy "Users can insert their own sessions" on public.study_sessions for insert with check (auth.uid() = user_id);
-create policy "Users can update their own sessions" on public.study_sessions for update using (auth.uid() = user_id);
-create policy "Users can delete their own sessions" on public.study_sessions for delete using (auth.uid() = user_id);
+create policy "Users can view their own sessions" on public.study_sessions for select to authenticated using ((select auth.uid()) = user_id);
+create policy "Users can insert their own sessions" on public.study_sessions for insert to authenticated with check ((select auth.uid()) = user_id);
+create policy "Users can update their own sessions" on public.study_sessions for update to authenticated using ((select auth.uid()) = user_id) with check ((select auth.uid()) = user_id);
+create policy "Users can delete their own sessions" on public.study_sessions for delete to authenticated using ((select auth.uid()) = user_id);
 
 -- Create policies for Marks
-create policy "Users can view their own marks" on public.marks for select using (auth.uid() = user_id);
-create policy "Users can insert their own marks" on public.marks for insert with check (auth.uid() = user_id);
-create policy "Users can update their own marks" on public.marks for update using (auth.uid() = user_id);
-create policy "Users can delete their own marks" on public.marks for delete using (auth.uid() = user_id);
+create policy "Users can view their own marks" on public.marks for select to authenticated using ((select auth.uid()) = user_id);
+create policy "Users can insert their own marks" on public.marks for insert to authenticated with check ((select auth.uid()) = user_id);
+create policy "Users can update their own marks" on public.marks for update to authenticated using ((select auth.uid()) = user_id) with check ((select auth.uid()) = user_id);
+create policy "Users can delete their own marks" on public.marks for delete to authenticated using ((select auth.uid()) = user_id);
 
 -- Create policies for User Preferences
-create policy "Users can view their own preferences" on public.user_preferences for select using (auth.uid() = user_id);
-create policy "Users can insert their own preferences" on public.user_preferences for insert with check (auth.uid() = user_id);
-create policy "Users can update their own preferences" on public.user_preferences for update using (auth.uid() = user_id);
+create policy "Users can view their own preferences" on public.user_preferences for select to authenticated using ((select auth.uid()) = user_id);
+create policy "Users can insert their own preferences" on public.user_preferences for insert to authenticated with check ((select auth.uid()) = user_id);
+create policy "Users can update their own preferences" on public.user_preferences for update to authenticated using ((select auth.uid()) = user_id) with check ((select auth.uid()) = user_id);
 
 -- Create policies for Chat Messages
-create policy "Users can view their own chat messages" on public.chat_messages for select using (auth.uid() = user_id);
-create policy "Users can insert their own chat messages" on public.chat_messages for insert with check (auth.uid() = user_id);
-create policy "Users can delete their own chat messages" on public.chat_messages for delete using (auth.uid() = user_id);
+create policy "Users can view their own chat messages" on public.chat_messages for select to authenticated using ((select auth.uid()) = user_id);
+create policy "Users can insert their own chat messages" on public.chat_messages for insert to authenticated with check ((select auth.uid()) = user_id);
+create policy "Users can delete their own chat messages" on public.chat_messages for delete to authenticated using ((select auth.uid()) = user_id);
 
 -- Function to auto-create user preferences on signup
 create or replace function public.handle_new_user()
-returns trigger as $$
+returns trigger
+language plpgsql
+security definer
+set search_path = ''
+as $$
 begin
   insert into public.user_preferences (user_id)
-  values (new.id);
+  values (new.id)
+  on conflict (user_id) do nothing;
   return new;
 end;
-$$ language plpgsql security definer;
+$$;
 
 -- Trigger to call the function after user signup
 create trigger on_auth_user_created
