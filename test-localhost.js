@@ -5,8 +5,7 @@ import puppeteer from 'puppeteer';
   const browser = await puppeteer.launch();
   const page = await browser.newPage();
   
-  page.on('console', msg => console.log('BROWSER CONSOLE:', msg.text()));
-  page.on('pageerror', err => console.log('BROWSER ERROR:', err.toString()));
+  page.on('console', msg => console.log('BROWSER CONSOLE:', msg.type(), msg.text()));
   
   console.log("Navigating to auth page...");
   await page.goto('http://localhost:5173/auth', { waitUntil: 'networkidle0' });
@@ -33,7 +32,7 @@ import puppeteer from 'puppeteer';
   console.log("Submitting...");
   await page.evaluate(() => {
     const btns = Array.from(document.querySelectorAll('button'));
-    const submitBtn = btns.find(b => b.textContent.includes('Create Account') || b.textContent.includes('Sign Up'));
+    const submitBtn = btns.find(b => b.textContent.includes('Create Account'));
     if (submitBtn) submitBtn.click();
   });
   
@@ -46,6 +45,9 @@ import puppeteer from 'puppeteer';
     return p ? p.textContent : null;
   });
   if (formError) console.log("Form Error:", formError);
+  
+  await page.screenshot({ path: 'screenshot.png' });
+  console.log("Screenshot saved to screenshot.png");
   
   await browser.close();
 })();

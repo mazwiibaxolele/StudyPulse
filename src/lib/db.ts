@@ -36,11 +36,11 @@ export const modulesDb = {
     const q = query(
       collection(db, 'modules'), 
       where('user_id', '==', uid),
-      where('isActive', '==', true),
-      orderBy('createdAt', 'asc')
+      where('isActive', '==', true)
     );
     const snapshot = await getDocs(q);
-    return snapshot.docs.map(doc => convertDoc<Module>(doc));
+    const docs = snapshot.docs.map(doc => convertDoc<Module>(doc));
+    return docs.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
   },
 
   async create(data: Omit<Module, 'id' | 'createdAt' | 'isActive'>): Promise<Module> {
@@ -73,11 +73,11 @@ export const sessionsDb = {
     const uid = requireUser();
     const q = query(
       collection(db, 'sessions'), 
-      where('user_id', '==', uid),
-      orderBy('createdAt', 'desc')
+      where('user_id', '==', uid)
     );
     const snapshot = await getDocs(q);
-    return snapshot.docs.map(doc => convertDoc<StudySession>(doc));
+    const docs = snapshot.docs.map(doc => convertDoc<StudySession>(doc));
+    return docs.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
   },
 
   async create(data: Omit<StudySession, 'id' | 'createdAt'>): Promise<StudySession> {
@@ -97,11 +97,11 @@ export const marksDb = {
     const uid = requireUser();
     const q = query(
       collection(db, 'marks'), 
-      where('user_id', '==', uid),
-      orderBy('createdAt', 'desc')
+      where('user_id', '==', uid)
     );
     const snapshot = await getDocs(q);
-    return snapshot.docs.map(doc => convertDoc<Mark>(doc));
+    const docs = snapshot.docs.map(doc => convertDoc<Mark>(doc));
+    return docs.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
   },
 
   async create(data: Omit<Mark, 'id' | 'createdAt'>): Promise<Mark> {
@@ -152,11 +152,11 @@ export const chatDb = {
       const uid = requireUser();
       const q = query(
         collection(db, 'chat_messages'), 
-        where('user_id', '==', uid),
-        orderBy('createdAt', 'asc')
+        where('user_id', '==', uid)
       );
       const snapshot = await getDocs(q);
-      return snapshot.docs.map(doc => convertDoc<ChatMessage>(doc));
+      const docs = snapshot.docs.map(doc => convertDoc<ChatMessage>(doc));
+      return docs.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
     } catch (error) {
       console.error(error);
       return [];
