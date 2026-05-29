@@ -9,13 +9,20 @@ import {
   preferencesDb,
 } from '../lib/db';
 
+interface AppUser {
+  id: string;
+  email?: string;
+  name?: string;
+  photoURL?: string;
+}
+
 interface AppStore {
   // State
   modules: Module[];
   marks: Mark[];
   sessions: StudySession[];
   preferences: UserPreferences;
-  user: any | null; // Supabase user
+  user: AppUser | null;
   isAuthenticated: boolean;
   isLoaded: boolean;
 
@@ -36,8 +43,9 @@ interface AppStore {
   refreshSessions: () => Promise<void>;
 
   // Auth
-  setUser: (user: any | null) => void;
+  setUser: (user: AppUser | null) => void;
   signOut: () => Promise<void>;
+  updateUserProfile: (data: { displayName?: string; photoURL?: string }) => Promise<void>;
 
   // Preferences
   updatePreferences: (data: Partial<UserPreferences>) => Promise<void>;
@@ -58,7 +66,15 @@ export const useAppStore = create<AppStore>()((set) => ({
     import('../lib/firebase').then(({ auth }) => {
       auth.onAuthStateChanged(async (user) => {
         if (user) {
-          set({ user: { id: user.uid, email: user.email || undefined } as any, isAuthenticated: true });
+          set({
+            user: {
+              id: user.uid,
+              email: user.email || undefined,
+              name: user.displayName || undefined,
+              photoURL: user.photoURL || undefined,
+            },
+            isAuthenticated: true,
+          });
           try {
             const [modules, sessions, marks, preferences] = await Promise.all([
               modulesDb.getAll(),
@@ -79,7 +95,6 @@ export const useAppStore = create<AppStore>()((set) => ({
   },
 
   loadAll: async () => {
-    // Replaced by auth.onAuthStateChanged listener, we just return
     return;
   },
 
@@ -90,7 +105,6 @@ export const useAppStore = create<AppStore>()((set) => ({
   },
 
   updateModule: async (id, data) => {
-    // Optimistic
     set((state) => ({
       modules: state.modules.map((m) => (m.id === id ? { ...m, ...data } : m)),
     }));
@@ -133,6 +147,23 @@ export const useAppStore = create<AppStore>()((set) => ({
       sessions: [],
       preferences: DEFAULT_PREFERENCES,
     });
+  },
+
+  updateUserProfile: async (data) => {
+    const { auth } = await import('../lib/firebase');
+    const { updateProfile } = await import('firebase/auth');
+    const currentUser = auth.currentUser;
+    if (!currentUser) return;
+    await updateProfile(currentUser, data);
+    set((state) => ({
+      user: state.user
+        ? {
+            ...state.user,
+            name: data.displayName ?? state.user.name,
+            photoURL: data.photoURL ?? state.user.photoURL,
+          }
+        : null,
+    }));
   },
 
   updatePreferences: async (data) => {

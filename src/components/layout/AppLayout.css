@@ -323,3 +323,81 @@
     line-height: 1;
   }
 }
+
+/* ─── Avatar Images ─────────────────────────────────────────── */
+.sidebar__avatar-img,
+.topbar__avatar-img {
+  width: 100%;
+  height: 100%;
+  border-radius: inherit;
+  object-fit: cover;
+}
+
+/* ─── Profile Modal ─────────────────────────────────────────── */
+.profile-modal__content {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+.profile-modal__avatar-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.profile-modal__avatar {
+  width: 96px;
+  height: 96px;
+  border-radius: var(--radius-full);
+  background: linear-gradient(135deg, var(--color-primary), var(--color-secondary));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+  transition: all var(--transition-base);
+}
+
+.profile-modal__avatar:hover {
+  transform: scale(1.05);
+  box-shadow: var(--shadow-glow-primary);
+}
+
+.profile-modal__avatar-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: var(--radius-full);
+}
+
+.profile-modal__avatar-initials {
+  font-size: var(--text-2xl);
+  font-weight: 700;
+  color: white;
+  text-transform: uppercase;
+}
+
+.profile-modal__avatar-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  opacity: 0;
+  transition: opacity var(--transition-fast);
+  border-radius: var(--radius-full);
+}
+
+.profile-modal__avatar:hover .profile-modal__avatar-overlay {
+  opacity: 1;
+}
+
+.profile-modal__avatar-hint {
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+}
