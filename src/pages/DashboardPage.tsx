@@ -103,7 +103,10 @@ export default function DashboardPage() {
 
   const marksTrend = useMemo(() => {
     if (marks.length === 0) return [];
-    const sorted = [...marks].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+    const sorted = [...marks].sort((a, b) => {
+      const dDiff = new Date(a.date).getTime() - new Date(b.date).getTime();
+      return dDiff !== 0 ? dDiff : new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+    });
     return sorted.map(m => {
       const mod = modules.find(mod => mod.id === m.moduleId);
       return {
@@ -171,7 +174,8 @@ export default function DashboardPage() {
     ?? DEFAULT_GRADE_SCALES[0];
 
   function getGradeColor(pct: number): string {
-    const range = gradeScale.ranges.find(r => pct >= r.minPercent && pct <= r.maxPercent);
+    const roundedPct = Math.round(pct);
+    const range = gradeScale.ranges.find(r => roundedPct >= r.minPercent && roundedPct <= r.maxPercent);
     return range?.color ?? 'var(--text-muted)';
   }
 

@@ -43,7 +43,10 @@ function buildSystemPrompt(ctx: StudyContext): string {
     const modMarks = ctx.marks.filter(m => m.moduleId === mod.id);
     if (modMarks.length === 0) return null;
     const avg = modMarks.reduce((a, m) => a + m.percentage, 0) / modMarks.length;
-    const recent = modMarks.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    const recent = modMarks.sort((a, b) => {
+      const dDiff = new Date(b.date).getTime() - new Date(a.date).getTime();
+      return dDiff !== 0 ? dDiff : new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+    });
     return `- ${mod.name}: avg ${avg.toFixed(1)}%, ${modMarks.length} assessments (latest: ${recent[0]?.title} ${recent[0]?.percentage.toFixed(1)}%)`;
   }).filter(Boolean).join('\n');
 

@@ -31,8 +31,9 @@ const emptyForm = (defaultModuleId: string): MarkFormData => ({
 /* ─── Helpers ────────────────────────────────────────────────── */
 function getGradeInfo(pct: number, scaleId: string) {
   const scale = DEFAULT_GRADE_SCALES.find(s => s.id === scaleId) ?? DEFAULT_GRADE_SCALES[0];
+  const roundedPct = Math.round(pct);
   for (const range of scale.ranges) {
-    if (pct >= range.minPercent && pct <= range.maxPercent) {
+    if (roundedPct >= range.minPercent && roundedPct <= range.maxPercent) {
       return range;
     }
   }
@@ -66,7 +67,10 @@ export default function MarksPage() {
   const sortedMarks = useMemo(() => {
     let filtered = [...marks];
     if (filterModuleId) filtered = filtered.filter(m => m.moduleId === filterModuleId);
-    return filtered.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    return filtered.sort((a, b) => {
+      const dDiff = new Date(b.date).getTime() - new Date(a.date).getTime();
+      return dDiff !== 0 ? dDiff : new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+    });
   }, [marks, filterModuleId]);
 
   const groupedMarks = useMemo(() => {
