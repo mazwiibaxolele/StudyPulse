@@ -58,7 +58,7 @@ export const useAppStore = create<AppStore>()((set) => ({
     import('../lib/firebase').then(({ auth }) => {
       auth.onAuthStateChanged(async (user) => {
         if (user) {
-          set({ user: { id: user.uid, email: user.email || undefined } as any });
+          set({ user: { id: user.uid, email: user.email || undefined } as any, isAuthenticated: true });
           try {
             const [modules, sessions, marks, preferences] = await Promise.all([
               modulesDb.getAll(),
@@ -71,7 +71,7 @@ export const useAppStore = create<AppStore>()((set) => ({
             console.error('Failed to fetch data:', error);
           }
         } else {
-          set({ user: null, modules: [], sessions: [], marks: [], preferences: DEFAULT_PREFERENCES });
+          set({ user: null, isAuthenticated: false, modules: [], sessions: [], marks: [], preferences: DEFAULT_PREFERENCES });
         }
         set({ isLoaded: true });
       });
