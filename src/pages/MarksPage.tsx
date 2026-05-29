@@ -1,5 +1,5 @@
 import { useState, useMemo, useCallback } from 'react';
-import { Plus, Trash2, Award, X } from 'lucide-react';
+import { Plus, Trash2, Award, X, Edit2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { useAppStore } from '../stores/appStore';
 import { DEFAULT_GRADE_SCALES, type Mark, type MarkType } from '../types';
@@ -52,10 +52,11 @@ function pctColor(pct: number): string {
    MarksPage
    ================================================================ */
 export default function MarksPage() {
-  const { modules, marks, addMark, deleteMark, preferences } = useAppStore();
+  const { modules, marks, addMark, updateMark, deleteMark, preferences } = useAppStore();
 
   const [modalOpen, setModalOpen] = useState(false);
   const [filterModuleId, setFilterModuleId] = useState<string | null>(null);
+  const [editMarkId, setEditMarkId] = useState<string | null>(null);
   const [form, setForm] = useState<MarkFormData>(emptyForm(modules[0]?.id ?? ''));
 
   const gradeScale = useMemo(
@@ -93,18 +94,37 @@ export default function MarksPage() {
 
   /* ─── Modal helpers ────────────────────────────────────── */
   const openAdd = useCallback(() => {
+    setEditMarkId(null);
     setForm(emptyForm(filterModuleId ?? modules[0]?.id ?? ''));
     setModalOpen(true);
   }, [filterModuleId, modules]);
 
-  const closeModal = useCallback(() => setModalOpen(false), []);
+  const openEdit = useCallback((mark: Mark) => {
+    setEditMarkId(mark.id);
+    setForm({
+      moduleId: mark.moduleId,
+      title: mark.title,
+      type: mark.type,
+      score: mark.score.toString(),
+      total: mark.total.toString(),
+      date: new Date(mark.date).toISOString().slice(0, 10),
+      weight: mark.weight.toString(),
+    });
+    setModalOpen(true);
+  }, []);
+
+  const closeModal = useCallback(() => {
+    setModalOpen(false);
+    setEditMarkId(null);
+  }, []);
 
   const handleSave = useCallback(() => {
     const score = parseFloat(form.score);
     const total = parseFloat(form.total);
     const weight = parseFloat(form.weight);
     if (!form.title.trim() || !form.moduleId || isNaN(score) || isNaN(total) || total <= 0) return;
-    addMark({
+    
+    const markData = {
       moduleId: form.moduleId,
       title: form.title.trim(),
       type: form.type,
@@ -113,9 +133,15 @@ export default function MarksPage() {
       percentage: livePercent!,
       date: form.date,
       weight: isNaN(weight) || weight <= 0 ? 1 : weight,
-    });
+    };
+
+    if (editMarkId) {
+      updateMark(editMarkId, markData);
+    } else {
+      addMark(markData);
+    }
     closeModal();
-  }, [form, addMark, closeModal]);
+  }, [form, editMarkId, updateMark, addMark, closeModal, livePercent]);
 
   const handleDelete = useCallback((id: string) => {
     deleteMark(id);
@@ -213,6 +239,18 @@ export default function MarksPage() {
                   <span style={{ fontWeight: 600, color: pctColor(moduleAvg) }}>
                     {moduleAvg.toFixed(1)}%
                   </span>
+                  <span
+                    className="marks-overall__badge"
+                    style={{
+                      background: `${getGradeInfo(moduleAvg, preferences.gradeScaleId).color}18`,
+                      color: getGradeInfo(moduleAvg, preferences.gradeScaleId).color,
+                      fontSize: '0.7rem',
+                      padding: '0.1rem 0.4rem',
+                      marginLeft: '0.25rem'
+                    }}
+                  >
+                    {getGradeInfo(moduleAvg, preferences.gradeScaleId).symbol}
+                  </span>
                 </div>
               </div>
               {groupMarks.map(mark => (
@@ -230,13 +268,22 @@ export default function MarksPage() {
                   <span className="mark-row__pct" style={{ color: pctColor(mark.percentage) }}>
                     {mark.percentage.toFixed(0)}%
                   </span>
-                  <button
-                    className="mark-row__delete"
-                    onClick={() => handleDelete(mark.id)}
-                    title="Delete mark"
-                  >
-                    <Trash2 size={14} />
-                  </button>
+                  <div style={{ display: 'flex', gap: '0.25rem' }}>
+                    <button
+                      className="mark-row__delete"
+                      onClick={() => openEdit(mark)}
+                      title="Edit mark"
+                    >
+                      <Edit2 size={14} />
+                    </button>
+                    <button
+                      className="mark-row__delete"
+                      onClick={() => handleDelete(mark.id)}
+                      title="Delete mark"
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  </div>
                 </div>
               ))}
             </div>
@@ -249,7 +296,7 @@ export default function MarksPage() {
         <div className="modal-backdrop" onClick={closeModal}>
           <div className="modal animate-scaleIn" onClick={e => e.stopPropagation()}>
             <div className="modal__header">
-              <h2 className="modal__title">Add Mark</h2>
+              <h2 className="modal__title">{editMarkId ? 'Edit Mark' : 'Add Mark'}</h2>
               <button className="btn btn-ghost btn-icon" onClick={closeModal}>
                 <X size={18} />
               </button>

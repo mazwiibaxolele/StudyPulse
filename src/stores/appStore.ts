@@ -37,6 +37,7 @@ interface AppStore {
 
   // Marks
   addMark: (data: Omit<Mark, 'id' | 'createdAt'>) => Promise<Mark>;
+  updateMark: (id: string, data: Partial<Omit<Mark, 'id' | 'createdAt'>>) => Promise<void>;
   deleteMark: (id: string) => Promise<void>;
 
   // Sessions
@@ -122,6 +123,13 @@ export const useAppStore = create<AppStore>()((set) => ({
     const newMark = await marksDb.create(data);
     set((state) => ({ marks: [...state.marks, newMark] }));
     return newMark;
+  },
+
+  updateMark: async (id, data) => {
+    set((state) => ({
+      marks: state.marks.map((m) => (m.id === id ? { ...m, ...data } : m)),
+    }));
+    await marksDb.update(id, data);
   },
 
   deleteMark: async (id) => {

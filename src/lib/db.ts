@@ -114,6 +114,13 @@ export const marksDb = {
     return convertDoc<Mark>(newDoc);
   },
 
+  async update(id: string, data: Partial<Mark>): Promise<Mark> {
+    const docRef = doc(db, 'marks', id);
+    await updateDoc(docRef, data);
+    const updatedDoc = await getDoc(docRef);
+    return convertDoc<Mark>(updatedDoc);
+  },
+
   async delete(id: string): Promise<void> {
     await deleteDoc(doc(db, 'marks', id));
   }

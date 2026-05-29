@@ -106,41 +106,46 @@ export default function DashboardPage() {
 
   const marksTrend = useMemo(() => {
     if (marks.length === 0) return [];
-    const sorted = [...marks].sort((a, b) => {
-      const dDiff = new Date(a.date).getTime() - new Date(b.date).getTime();
-      return dDiff !== 0 ? dDiff : new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
-    });
-
-    const trendMap = new Map<string, any>();
     
-    sorted.forEach(m => {
-      const dateStr = new Date(m.date).toLocaleDateString('en', { month: 'short', day: 'numeric' });
-      const mod = modules.find(mod => mod.id === m.moduleId);
-      const modCode = mod?.code ?? 'Unknown';
-
-      if (!trendMap.has(dateStr)) {
-        trendMap.set(dateStr, { date: dateStr });
-      }
-
-      const entry = trendMap.get(dateStr);
-      // Average marks on the same day for the same module
-      if (entry[modCode] !== undefined) {
-        entry[modCode] = (entry[modCode] + m.percentage) / 2;
-      } else {
-        entry[modCode] = m.percentage;
-      }
+    // 1. Group marks by module
+    const marksByModule = new Map<string, typeof marks>();
+    marks.forEach(m => {
+      if (!marksByModule.has(m.moduleId)) marksByModule.set(m.moduleId, []);
+      marksByModule.get(m.moduleId)!.push(m);
     });
 
-    return Array.from(trendMap.values()).map(entry => {
-      // Round all percentages to 1 decimal place
-      const rounded: any = { ...entry };
-      for (const key in rounded) {
-        if (key !== 'date' && typeof rounded[key] === 'number') {
-          rounded[key] = Math.round(rounded[key] * 10) / 10;
+    // 2. Sort marks within each module chronologically
+    marksByModule.forEach(modMarks => {
+      modMarks.sort((a, b) => {
+        const dDiff = new Date(a.date).getTime() - new Date(b.date).getTime();
+        return dDiff !== 0 ? dDiff : new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+      });
+    });
+
+    // 3. Find the maximum number of marks any module has
+    let maxMarks = 0;
+    marksByModule.forEach(modMarks => {
+      if (modMarks.length > maxMarks) maxMarks = modMarks.length;
+    });
+
+    // 4. Build array where each entry represents an index (Mark 1, Mark 2, etc.)
+    const trendData = [];
+    for (let i = 0; i < maxMarks; i++) {
+      const entry: any = { index: (i + 1).toString() }; // e.g. "1", "2", "3"
+      
+      marksByModule.forEach((modMarks, moduleId) => {
+        const mod = modules.find(m => m.id === moduleId);
+        const modCode = mod?.code ?? 'Unknown';
+        
+        if (i < modMarks.length) {
+          entry[modCode] = Math.round(modMarks[i].percentage * 10) / 10;
         }
-      }
-      return rounded;
-    });
+      });
+      
+      trendData.push(entry);
+    }
+
+    return trendData;
   }, [marks, modules]);
 
   // ─── Method Effectiveness ──────────────────────────────────
@@ -282,7 +287,7 @@ export default function DashboardPage() {
                 <ResponsiveContainer width="100%" height={280}>
                   <LineChart data={marksTrend}>
                     <CartesianGrid strokeDasharray="3 3" stroke="var(--border-default)" />
-                    <XAxis dataKey="date" tick={{ fill: 'var(--text-muted)', fontSize: 12 }} stroke="var(--border-default)" />
+                    <XAxis dataKey="index" tick={{ fill: 'var(--text-muted)', fontSize: 12 }} stroke="var(--border-default)" />
                     <YAxis domain={[0, 100]} tick={{ fill: 'var(--text-muted)', fontSize: 12 }} stroke="var(--border-default)" />
                     <Tooltip content={<CustomTooltip />} />
                     {modules.filter(mod => marks.some(m => m.moduleId === mod.id)).map(mod => (
