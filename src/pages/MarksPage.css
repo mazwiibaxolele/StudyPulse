@@ -350,6 +350,12 @@
   margin-top: var(--space-2);
 }
 
+@media (max-width: 1024px) {
+  .mark-row {
+    flex-wrap: wrap;
+  }
+}
+
 @media (max-width: 768px) {
   .marks-overall {
     flex-direction: column;

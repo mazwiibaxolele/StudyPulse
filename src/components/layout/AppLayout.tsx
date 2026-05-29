@@ -10,6 +10,8 @@ import {
   LogOut,
   Camera,
   X,
+  PanelLeftClose,
+  PanelLeftOpen,
 } from 'lucide-react';
 import { useAppStore } from '../../stores/appStore';
 import './AppLayout.css';
@@ -170,11 +172,12 @@ function ProfileModal({ onClose }: { onClose: () => void }) {
 export default function AppLayout() {
   const { user, signOut } = useAppStore();
   const [profileOpen, setProfileOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
   const initials = getInitials(user?.name);
 
   return (
-    <div className="layout">
+    <div className={`layout ${sidebarCollapsed ? 'layout--collapsed' : ''}`}>
       {/* ── Desktop Sidebar ───────────────────────────────── */}
       <aside className="sidebar">
         {/* Brand */}
@@ -187,6 +190,15 @@ export default function AppLayout() {
           </div>
         </NavLink>
 
+        {/* Toggle Button */}
+        <button
+          className="sidebar__toggle"
+          onClick={() => setSidebarCollapsed(c => !c)}
+          title={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+        >
+          {sidebarCollapsed ? <PanelLeftOpen size={16} /> : <PanelLeftClose size={16} />}
+        </button>
+
         {/* Nav Items */}
         <nav className="sidebar__nav">
           {NAV_ITEMS.map(({ path, label, icon: Icon }) => (
@@ -198,7 +210,7 @@ export default function AppLayout() {
               }
             >
               <Icon size={20} className="sidebar__nav-icon" />
-              {label}
+              <span className="sidebar__nav-label">{label}</span>
             </NavLink>
           ))}
         </nav>
