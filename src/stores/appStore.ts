@@ -83,7 +83,13 @@ export const useAppStore = create<AppStore>()((set) => ({
               marksDb.getAll(),
               preferencesDb.get(),
             ]);
-            set({ modules, sessions, marks, preferences: preferences || DEFAULT_PREFERENCES });
+            const mergedPrefs = {
+              ...DEFAULT_PREFERENCES,
+              ...(preferences || {}),
+              autoStartBreaks: true,
+              pomodorosBeforeLongBreak: 6
+            };
+            set({ modules, sessions, marks, preferences: mergedPrefs });
           } catch (error) {
             console.error('Failed to fetch data:', error);
           }

@@ -35,26 +35,30 @@ const METHOD_ICONS: Record<string, React.ComponentType<{ size?: number }>> = {
 
 // ─── Component ───────────────────────────────────────────────
 
-function playChime() {
+function playChime(times = 1) {
   try {
     const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
     if (!AudioContext) return;
     const ctx = new AudioContext();
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
     
-    osc.type = 'sine';
-    osc.frequency.setValueAtTime(880, ctx.currentTime);
-    osc.frequency.exponentialRampToValueAtTime(440, ctx.currentTime + 0.5);
-    
-    gain.gain.setValueAtTime(0, ctx.currentTime);
-    gain.gain.linearRampToValueAtTime(0.5, ctx.currentTime + 0.05);
-    gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.5);
-    
-    osc.connect(gain);
-    gain.connect(ctx.destination);
-    osc.start();
-    osc.stop(ctx.currentTime + 0.5);
+    for (let i = 0; i < times; i++) {
+      const startTime = ctx.currentTime + i * 0.6;
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(880, startTime);
+      osc.frequency.exponentialRampToValueAtTime(440, startTime + 0.5);
+      
+      gain.gain.setValueAtTime(0, startTime);
+      gain.gain.linearRampToValueAtTime(0.5, startTime + 0.05);
+      gain.gain.exponentialRampToValueAtTime(0.01, startTime + 0.5);
+      
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(startTime);
+      osc.stop(startTime + 0.5);
+    }
   } catch(e) {
     console.error('Audio play failed', e);
   }
@@ -100,7 +104,7 @@ export default function TimerPage() {
   const prevPhaseRef = useRef(timer.phase);
   useEffect(() => {
     if (prevPhaseRef.current !== timer.phase && timer.phase !== 'idle' && prevPhaseRef.current !== 'idle') {
-      playChime();
+      playChime(1);
       
       if ('Notification' in window && Notification.permission === 'granted') {
         const title = timer.phase === 'focus' ? 'Time to focus!' : 'Break time!';
@@ -112,6 +116,17 @@ export default function TimerPage() {
     }
     prevPhaseRef.current = timer.phase;
   }, [timer.phase]);
+
+  // 5-second warning chime
+  const warned5s = useRef(false);
+  useEffect(() => {
+    if (timer.isRunning && timer.timeRemaining === 5 && !warned5s.current) {
+      playChime(3);
+      warned5s.current = true;
+    } else if (timer.timeRemaining > 5 || timer.timeRemaining === 0) {
+      warned5s.current = false;
+    }
+  }, [timer.timeRemaining, timer.isRunning]);
 
   // ─── Derived values ────────────────────────────────────────
 
@@ -182,7 +197,7 @@ export default function TimerPage() {
 
   // ─── Pomodoro dots ─────────────────────────────────────────
 
-  const maxPomodoros = 4;
+  const maxPomodoros = 6;
   const dots = Array.from({ length: maxPomodoros }, (_, i) => i < timer.pomodoroCount);
 
   // ─── Render ────────────────────────────────────────────────
