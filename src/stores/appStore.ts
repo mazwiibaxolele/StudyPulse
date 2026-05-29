@@ -87,7 +87,7 @@ export const useAppStore = create<AppStore>()((set) => ({
               ...DEFAULT_PREFERENCES,
               ...(preferences || {}),
               autoStartBreaks: true,
-              pomodorosBeforeLongBreak: 6
+              pomodorosBeforeLongBreak: 3
             };
             set({ modules, sessions, marks, preferences: mergedPrefs });
           } catch (error) {

@@ -198,7 +198,7 @@ export const DEFAULT_PREFERENCES: UserPreferences = {
   focusDuration: 25,
   shortBreakDuration: 5,
   longBreakDuration: 15,
-  pomodorosBeforeLongBreak: 6,
+  pomodorosBeforeLongBreak: 3,
   gradeScaleId: 'percentage',
   autoStartBreaks: true,
   soundEnabled: true,
