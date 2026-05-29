@@ -24,6 +24,7 @@ interface TimerStore {
   sessionStartedAt: string | null;
   breaksTaken: number;
   showCompletionModal: boolean;
+  targetTime: number | null;
 
   // Actions
   startTimer: (moduleId: string, method: StudyMethod) => void;
