@@ -9,7 +9,6 @@ import {
   deleteDoc, 
   query, 
   where, 
-  orderBy, 
   serverTimestamp 
 } from 'firebase/firestore';
 import type { Module, StudySession, Mark, UserPreferences, ChatMessage } from '../types';
